@@ -1,40 +1,58 @@
 # logic.py
 import os
-import time
+import json
 from apify_client import ApifyClient
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-import google.generativeai as genai
+from openai import OpenAI
 
 APIFY_TOKEN = os.environ.get('APIFY_TOKEN_PLANTILLA')
 apify_client = ApifyClient(APIFY_TOKEN)
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+_openai_client = None
+
+def generate_ai_json(prompt: str) -> str:
+    global _openai_client
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        raise RuntimeError('Falta configurar OPENAI_API_KEY.')
+    if _openai_client is None:
+        _openai_client = OpenAI(api_key=api_key)
+
+    response = _openai_client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{'role': 'user', 'content': prompt}],
+        response_format={'type': 'json_object'},
+    )
+    content = response.choices[0].message.content
+    if not content:
+        raise RuntimeError('OpenAI devolvió una respuesta vacía.')
+    return content
 
 def scrape_instagram_comments(url: str):
-    print("Iniciando scraping de comentarios...")
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless"); options.add_argument("--no-sandbox"); options.add_argument("--disable-dev-shm-usage")
-    comments = []
-    driver = None
+    print("Iniciando scraping de comentarios con Apify...")
     try:
-        driver = webdriver.Chrome(options=options)
-        driver.get(url); time.sleep(8)
-        elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'x78zum5')]//div[contains(@class, 'x1cy8zhl')]//span")
-        comments = [el.text for el in elements if el.text]
-    except Exception as e: print(f"Error en scraping: {e}")
-    finally:
-        if driver: driver.quit()
-    print("Scraping finalizado.")
-    return comments
+        actor_run = apify_client.actor("apify/instagram-comment-scraper").call(
+            run_input={"directUrls": [url], "resultsLimit": 100}
+        )
+        comments = []
+        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
+            text = item.get("text") or item.get("comment")
+            if isinstance(text, str) and text.strip():
+                comments.append(text.strip())
+        print(f"Scraping finalizado: {len(comments)} comentarios.")
+        return comments
+    except Exception as e:
+        print(f"Error al extraer comentarios con Apify: {e}")
+        return []
 
-def analyze_profile_with_ai(biography: str, model):
+def analyze_profile_with_ai(biography: str):
     """
-    Usa Gemini para analizar la biografía de un perfil de Instagram y deducir su nicho y avatar.
+    Usa OpenAI para analizar la biografía de un perfil de Instagram y deducir su nicho y avatar.
     """
     if not biography or not biography.strip():
         print("Biografía vacía, saltando análisis de perfil.")
         return {"niche": "No se pudo determinar (sin biografía).", "avatar": "No se pudo determinar (sin biografía)."}
 
-    print("Iniciando análisis de perfil con Gemini...")
+    print("Iniciando análisis de perfil con OpenAI...")
     
     prompt = f"""
         **IDENTIDAD:** Eres 'BrandStrategist AI', un experto en branding y marketing digital. Tu especialidad es analizar perfiles de redes sociales para entender su posicionamiento de mercado.
@@ -51,16 +69,15 @@ def analyze_profile_with_ai(biography: str, model):
     """
     
     try:
-        response = model.generate_content(prompt)
-        cleaned_response = response.text.strip().replace('```json', '').replace('```', '')
+        cleaned_response = generate_ai_json(prompt)
         print("Análisis de perfil completado.")
         return json.loads(cleaned_response)
     except Exception as e:
-        print(f"Error con API de Gemini al analizar perfil: {e}")
+        print(f"Error con API de OpenAI al analizar perfil: {e}")
         return {"niche": "Error en el análisis.", "avatar": "Error en el análisis."}
 
-def analyze_comments_with_ai(comments: list, context: dict, model):
-    print("Iniciando análisis de CONGRUENCIA con Gemini...")
+def analyze_comments_with_ai(comments: list, context: dict):
+    print("Iniciando análisis de CONGRUENCIA con OpenAI...")
     comments_text_block = "\n".join(f"- {c}" for c in comments)
     
     # --- ¡PROMPT MEJORADO CON CONGRUENCIA! ---
@@ -93,26 +110,37 @@ def analyze_comments_with_ai(comments: list, context: dict, model):
         {{ "leads": [ ... ] }}
     """
     try:
-        response = model.generate_content(prompt)
+        response_content = generate_ai_json(prompt)
         print("Análisis de congruencia completado.")
-        return response.text.strip().replace('```json', '').replace('```', '')
+        return response_content
     except Exception as e:
-        print(f"Error con API de Gemini: {e}"); return None
+        print(f"Error con API de OpenAI: {e}"); return None
 
 def find_instagram_posts_by_hashtag(hashtag: str):
     cleaned_hashtag = hashtag.strip().replace("#", "")
     print(f"Iniciando BÚSQUEDA SIMPLE para #{cleaned_hashtag} con Apify...")
     try:
-        run_input = { "hashtags": [cleaned_hashtag], "resultsLimit": 3 } 
+        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 15}
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
         posts_data = []
-        for item in apify_client.dataset(actor_run["defaultDatasetId"]).iterate_items():
-            if item.get('url'):
-                posts_data.append({
-                    "url": item.get('url'), "caption": item.get('caption', 'Sin descripción.'),
-                    "likesCount": 0, "commentsCount": 0, "ownerUsername": "N/A", "ownerProfilePicUrl": None
-                })
-        return posts_data
+        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
+            url = item.get('url')
+            if not url:
+                continue
+            owner = item.get('owner') or {}
+            posts_data.append({
+                "url": url,
+                "caption": item.get('caption') or 'Sin descripción.',
+                "likesCount": max(item.get('likesCount') or 0, 0),
+                "commentsCount": item.get('commentsCount') or 0,
+                "ownerUsername": item.get('ownerUsername') or owner.get('username') or '',
+                "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
+                "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl'),
+            })
+        # Solo posts con comentarios, los más comentados primero
+        posts_data = [p for p in posts_data if p["commentsCount"] > 0]
+        posts_data.sort(key=lambda p: p["commentsCount"], reverse=True)
+        return posts_data[:6]
     except Exception as e:
         print(f"Error en prospección simple: {e}"); return None
     
@@ -128,11 +156,11 @@ def find_instagram_posts_by_hashtag(hashtag: str):
 
 # ... (tus otras funciones de logic.py van aquí arriba) ...
 
-def generate_prospecting_strategy(context: dict, model):
+def generate_prospecting_strategy(context: dict):
     """
-    Usa la IA de Gemini para generar palabras clave y hashtags a partir de un contexto de negocio.
+    Usa OpenAI para generar palabras clave y hashtags a partir de un contexto de negocio.
     """
-    print("Iniciando generación de estrategia de prospección con Gemini...")
+    print("Iniciando generación de estrategia de prospección con OpenAI...")
     
     # Usamos el Meta-Prompt que diseñamos para esta tarea específica.
     prompt = f"""
@@ -156,26 +184,24 @@ def generate_prospecting_strategy(context: dict, model):
     """
     
     try:
-        response = model.generate_content(prompt)
-        # Limpiamos la respuesta para asegurarnos de que es un JSON válido
-        cleaned_response = response.text.strip().replace('```json', '').replace('```', '')
+        cleaned_response = generate_ai_json(prompt)
         print("Generación de estrategia completada.")
         return cleaned_response
     except Exception as e:
-        print(f"Error con API de Gemini al generar estrategia: {e}")
+        print(f"Error con API de OpenAI al generar estrategia: {e}")
         return None
     
-def get_post_details(url: str, gemini_model): # Ahora le pasamos el modelo de Gemini
+def get_post_details(url: str):
     """
-    Usa Apify para obtener detalles del post Y LUEGO usa Gemini para analizar el perfil del autor.
+    Usa Apify para obtener detalles del post y OpenAI para analizar el perfil del autor.
     """
     print(f"Obteniendo detalles enriquecidos para la URL: {url}...")
     try:
         actor = apify_client.actor("apify/instagram-scraper")
-        run_input = {"urls": [url], "resultsType": "posts", "resultsLimit": 1}
+        run_input = {"directUrls": [url], "resultsType": "posts", "resultsLimit": 1}
         actor_run = actor.call(run_input=run_input)
         
-        for item in apify_client.dataset(actor_run["defaultDatasetId"]).iterate_items():
+        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
             # Primero, recolectamos los datos del post
             post_details = {
                 "caption": item.get('caption', 'Sin descripción.'),
@@ -188,7 +214,7 @@ def get_post_details(url: str, gemini_model): # Ahora le pasamos el modelo de Ge
             author_bio = item.get('ownerBiography', '')
             
             # ¡LA NUEVA MAGIA! Llamamos a nuestra nueva función de análisis de perfil
-            profile_analysis = analyze_profile_with_ai(author_bio, gemini_model)
+            profile_analysis = analyze_profile_with_ai(author_bio)
             
             print("Detalles y análisis de perfil obtenidos con éxito.")
             # Devolvemos un objeto que contiene AMBAS piezas de información

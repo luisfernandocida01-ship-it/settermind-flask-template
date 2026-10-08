@@ -4,9 +4,9 @@ python-multipart
 SQLAlchemy
 passlib[bcrypt]
 python-jose[cryptography]
+PyJWT
 alembic
 psycopg2-binary
 
-selenium
-google-generativeai
+openai
 apify-client

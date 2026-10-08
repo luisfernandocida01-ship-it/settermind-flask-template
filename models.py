@@ -1,5 +1,5 @@
 # models.py
-from sqlalchemy import Column, String, DateTime, JSON, ForeignKey
+from sqlalchemy import Boolean, Column, String, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 import uuid
@@ -40,3 +40,26 @@ class Strategy(Base):
     
     # Relación para que SQLAlchemy sepa cómo conectar
     owner = relationship('User', back_populates='strategies')    
+
+class OutboxItem(Base):
+    __tablename__ = 'outbox_items'
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    post_url = Column(String, nullable=False)
+    prospect_username = Column(String, nullable=False)
+    prospect_comment = Column(String, nullable=False)
+    identified_pain = Column(String, default='')
+    score = Column(String, default='')
+    selected_opener = Column(String, nullable=False)
+    status = Column(String, default='pending')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+
+class Conversation(Base):
+    __tablename__ = 'conversations'
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    lead_data = Column(JSON, nullable=False)
+    status = Column(String, default='iniciado')
+    notes = Column(String, default='')
+    exported = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)

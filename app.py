@@ -10,12 +10,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta, timezone
 import jwt
 from pydantic import BaseModel
-import google.generativeai as genai
+from typing import Any
 import bcrypt
 from logic import get_post_details
 
 # Importamos nuestras clases y funciones
-from models import Base, User, Analysis, Strategy
+from models import Base, User, Analysis, Strategy, OutboxItem, Conversation
 from logic import scrape_instagram_comments, analyze_comments_with_ai, find_instagram_posts_by_hashtag, generate_prospecting_strategy
 
 # --- CONFIGURACIÓN ---
@@ -30,11 +30,6 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
-# Configuración de Gemini
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY_PLANTILLA')
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('models/gemini-pro-latest')
-
 # --- Modelos Pydantic (DTOs) ---
 class UserCreate(BaseModel): username: str; email: str; password: str
 class UserLogin(BaseModel): email: str; password: str
@@ -46,6 +41,44 @@ class StrategyRequest(BaseModel):
     avatar: str
 class PostDetailsRequest(BaseModel):
     post_url: str
+class OutboxCreate(BaseModel):
+    post_url: str
+    prospect_username: str
+    prospect_comment: str
+    selected_opener: str
+    identified_pain: str = ''
+    score: str | int | float = ''
+class ConversationCreate(BaseModel):
+    lead_data: dict[str, Any]
+class ConversationUpdate(BaseModel):
+    notes: str | None = None
+    status: str | None = None
+
+def _outbox_dict(item: OutboxItem):
+    return {
+        "id": item.id,
+        "post_url": item.post_url,
+        "prospect_username": item.prospect_username,
+        "prospect_comment": item.prospect_comment,
+        "selected_opener": item.selected_opener,
+        "identified_pain": item.identified_pain,
+        "score": item.score,
+    }
+
+def _convo_dict(conversation: Conversation):
+    return {
+        "id": conversation.id,
+        "lead_data": conversation.lead_data,
+        "status": conversation.status,
+        "notes": conversation.notes or "",
+        "exported": conversation.exported,
+    }
+
+def _own(db: Session, model, item_id: str, user: User):
+    row = db.query(model).filter_by(id=item_id, owner_id=user.id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No encontrado.")
+    return row
 
 # --- Dependencias y Lógica de Auth ---
 def get_db():
@@ -127,7 +160,7 @@ def prospect_posts(req: ProspectRequest):
 @app.post("/api/analyze")
 def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Obtenemos los detalles del post, incluyendo el caption.
-    post_details = get_post_details(req.post_url, gemini_model)
+    post_details = get_post_details(req.post_url)
     if not post_details:
         raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post para el contexto.")
 
@@ -141,7 +174,7 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
         "caption": post_details.get('caption') # ¡Añadimos el caption!
     }
     
-    ai_analysis_json_string = analyze_comments_with_ai(comments, context, gemini_model)
+    ai_analysis_json_string = analyze_comments_with_ai(comments, context)
     if not ai_analysis_json_string: raise HTTPException(status_code=500, detail="Análisis de IA falló.")
     
     try:
@@ -159,9 +192,30 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
         db.commit()
         print(f"Análisis para el usuario {current_user.username} guardado en la DB.")
         
+        ai_results["id"] = new_analysis.id
+        ai_results["analysis_id"] = new_analysis.id
+        ai_results["analysisId"] = new_analysis.id
         return ai_results
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Respuesta de IA no es JSON válido.")
+
+@app.get("/api/analysis/{analysis_id}")
+def get_analysis(analysis_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.owner_id == current_user.id,
+    ).first()
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado.")
+
+    return {
+        **analysis.result_data,
+        "id": analysis.id,
+        "analysis_id": analysis.id,
+        "analysisId": analysis.id,
+        "status": "completed",
+        "result": analysis.result_data,
+    }
 
 @app.get("/api/history")
 def get_analysis_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -191,7 +245,7 @@ def get_strategies(db: Session = Depends(get_db), current_user: User = Depends(g
 # --- ¡MODIFICADO! Añadimos la dependencia del usuario y la DB ---
 def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     context = {"niche": req.niche, "avatar": req.avatar}
-    strategy_json_string = generate_prospecting_strategy(context, gemini_model)
+    strategy_json_string = generate_prospecting_strategy(context)
     
     if not strategy_json_string:
         raise HTTPException(status_code=500, detail="La generación de estrategia falló.")
@@ -217,12 +271,85 @@ def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), curre
 
 @app.post("/api/get-post-details")
 def fetch_post_details(req: PostDetailsRequest, current_user: User = Depends(get_current_user)):
-    details = get_post_details(req.post_url, gemini_model)
+    details = get_post_details(req.post_url)
     if not details:
         raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post.")
     return details
 
+@app.get("/api/outbox")
+def list_outbox(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = (db.query(OutboxItem).filter_by(owner_id=current_user.id, status='pending')
+            .order_by(OutboxItem.created_at.desc()).all())
+    return [_outbox_dict(row) for row in rows]
+
+@app.post("/api/outbox", status_code=201)
+def add_outbox(req: OutboxCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item_data = req.model_dump()
+    item_data["score"] = str(item_data["score"])
+    item = OutboxItem(**item_data, owner_id=current_user.id)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _outbox_dict(item)
+
+@app.patch("/api/outbox/{item_id}/sent")
+def mark_sent(item_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = _own(db, OutboxItem, item_id, current_user)
+    item.status = 'sent'
+    db.add(Conversation(owner_id=current_user.id, status='iniciado', lead_data={
+        "username": item.prospect_username,
+        "comment": item.prospect_comment,
+        "pain_point": item.identified_pain,
+        "score": item.score,
+        "opener": item.selected_opener,
+        "post_url": item.post_url,
+    }))
+    db.commit()
+    return {"ok": True}
+
+@app.get("/api/conversations")
+def list_conversations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = (db.query(Conversation).filter_by(owner_id=current_user.id)
+            .order_by(Conversation.created_at.desc()).all())
+    return [_convo_dict(row) for row in rows]
+
+@app.post("/api/conversations", status_code=201)
+def create_conversation(req: ConversationCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    data = req.lead_data
+    openers = data.get("openers_sugeridos") or data.get("suggested_openers")
+    opener = openers[0] if isinstance(openers, list) and openers else openers
+    lead = {
+        "username": data.get("username") or data.get("usuario") or data.get("comment_author") or "Usuario Anónimo",
+        "comment": data.get("comment") or data.get("comentario") or data.get("comment_text") or "",
+        "pain_point": data.get("pain_point") or data.get("dolor_identificado") or data.get("pain_point_identified") or "",
+        "score": str(data.get("score") or data.get("puntuacion") or data.get("potential_score") or ""),
+        "opener": opener or data.get("opener", ""),
+        "post_url": data.get("post_url", ""),
+    }
+    conversation = Conversation(owner_id=current_user.id, lead_data=lead)
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return _convo_dict(conversation)
+
+@app.patch("/api/conversations/{convo_id}")
+def update_conversation(convo_id: str, req: ConversationUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conversation = _own(db, Conversation, convo_id, current_user)
+    if req.notes is not None:
+        conversation.notes = req.notes
+    if req.status is not None:
+        conversation.status = req.status
+    db.commit()
+    return _convo_dict(conversation)
+
+@app.post("/api/conversations/{convo_id}/export")
+def export_conversation(convo_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conversation = _own(db, Conversation, convo_id, current_user)
+    conversation.exported = True
+    db.commit()
+    return _convo_dict(conversation)
+
 # --- LÓGICA PARA CORRER EL SERVIDOR (si se ejecuta directamente) ---
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
