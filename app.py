@@ -1,105 +1,232 @@
-# app.py - ¡LA VERSIÓN DE VICTORIA FINAL CON FASTAPI!
-
+# app.py
 import os
 import json
-import time
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+import hashlib
+import secrets
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta, timezone
 import jwt
 from pydantic import BaseModel
-import google.generativeai as genai
+from typing import Any, Optional
 import bcrypt
-from logic import get_post_details
+from mailer import send_welcome_email
 
-# Importamos nuestras clases y funciones
-from models import Base, User, Analysis, Strategy
-from logic import scrape_instagram_comments, analyze_comments_with_ai, find_instagram_posts_by_hashtag, generate_prospecting_strategy
+# Modelos y Lógica
+from models import Base, User, ApiKey, Analysis, Strategy, OutboxItem, Conversation
+from logic import (
+    scrape_instagram_comments,
+    analyze_comments_with_ai,
+    find_instagram_posts_by_hashtag,
+    generate_prospecting_strategy,
+    get_post_details
+)
 
-# --- CONFIGURACIÓN ---
-DATABASE_URL = "sqlite:///./setter_mind.db"
-SECRET_KEY = "clave-secreta-para-jwt-12345"
+# --- CONFIGURACIÓN DE ENTORNO ---
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./setter_mind.db")
+# Compatibilidad para URLs de Postgres en Render (postgres:// -> postgresql://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "clave-secreta-para-jwt-12345")
+HOTTOK_SECRET = os.environ.get("HOTTOK_SECRET", "qOLPyTTtTuN3fMvdqra2zZ5vkz738m90495356")
 ALGORITHM = "HS256"
 
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="SetterMind AI API")
+from fastapi.middleware.cors import CORSMiddleware
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://settermind.mentesalmercado.online",
+        "http://localhost:3000",
+        "*"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
-# Configuración de Gemini
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY_PLANTILLA')
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('models/gemini-pro-latest')
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# --- Modelos Pydantic (DTOs) ---
+# --- MODELOS PYDANTIC ---
 class UserCreate(BaseModel): username: str; email: str; password: str
 class UserLogin(BaseModel): email: str; password: str
 class ProspectRequest(BaseModel): hashtag: str
 class AnalyzeRequest(BaseModel): post_url: str; niche: str; avatar: str
-# ... debajo de los otros modelos Pydantic ...
-class StrategyRequest(BaseModel):
-    niche: str
-    avatar: str
-class PostDetailsRequest(BaseModel):
+class StrategyRequest(BaseModel): niche: str; avatar: str
+class PostDetailsRequest(BaseModel): post_url: str
+class OutboxCreate(BaseModel):
     post_url: str
+    prospect_username: str
+    prospect_comment: str
+    selected_opener: str
+    identified_pain: str = ''
+    score: str | int | float = ''
+class ConversationCreate(BaseModel): lead_data: dict[str, Any]
+class ConversationUpdate(BaseModel):
+    notes: Optional[str] = None
+    status: Optional[str] = None
 
-# --- Dependencias y Lógica de Auth ---
-def get_db():
-    db = SessionLocal()
-    try: yield db
-    finally: db.close()
+# --- CRIPTOGRAFÍA & AUTH DUAL (JWT + SHA-256 API KEY) ---
+def hash_api_key(raw_key: str) -> str:
+    return hashlib.sha256(raw_key.strip().encode('utf-8')).hexdigest()
 
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import ValidationError
-
-# Creamos el "esquema" que le dice a FastAPI que busque el token en la cabecera "Authorization"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """
-    Dependencia para obtener el usuario actual a partir del token JWT.
-    Este es nuestro nuevo "guardia de seguridad".
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-    except (jwt.PyJWTError, ValidationError):
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise credentials_exception
-    return user
-
-# --- ¡NUESTRAS FUNCIONES DE CONFIANZA! ---
-def verify_password(plain_password, hashed_password):
-    # Truncamos la contraseña que nos envía el usuario antes de verificarla
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_password.encode('utf-8'))
 
-def get_password_hash(password):
-    # Truncamos la contraseña a 72 bytes
-    p_bytes = password.encode('utf-8')[:72]
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(p_bytes, salt).decode('utf-8')
-def create_access_token(data: dict):
+def get_password_hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8')[:72], bcrypt.gensalt()).decode('utf-8')
+
+def create_access_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode = data.copy(); to_encode.update({"exp": expire})
+    to_encode = data.copy()
+    to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# --- API Endpoints ---
+async def get_current_user(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Middleware dual SaaS-20:
+    1. Si recibe 'x-api-key', calcula el hash SHA-256 y verifica cuota/estado.
+    2. Si recibe 'Authorization: Bearer <token>', valida la sesión JWT.
+    """
+    # 1. Validación por API Key (Hotmart / Magic Link)
+    if x_api_key:
+        hashed = hash_api_key(x_api_key)
+        api_key_record = db.query(ApiKey).filter(ApiKey.key_hash == hashed).first()
+        if not api_key_record or not api_key_record.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API Key inválida o inactiva."
+            )
+        if api_key_record.current_usage >= api_key_record.monthly_limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Límite mensual de consultas excedido."
+            )
+        # Incremento de uso atómico
+        api_key_record.current_usage += 1
+        db.commit()
+        return api_key_record.owner
+
+    # 2. Validación tradicional por JWT
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(status_code=401, detail="Token no contiene identificador de usuario")
+            user = db.query(User).filter(User.id == user_id).first()
+            if user is None:
+                raise HTTPException(status_code=401, detail="Usuario no encontrado")
+            return user
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Token JWT inválido o expirado")
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales no proporcionadas (se requiere x-api-key o Bearer token)"
+    )
+
+# --- WEBHOOK DE HOTMART (AUTOMATIZACIÓN POST-COMPRA) ---
+@app.post("/hotmartWebhook")
+async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.json()
+    
+    # 1. Validar el secreto de Hotmart (Hottok)
+    token_received = request.headers.get("hottok") or payload.get("hottok")
+    if token_received != HOTTOK_SECRET:
+        raise HTTPException(status_code=401, detail="Acceso no autorizado: Hottok inválido")
+
+    event = payload.get("event")
+    data = payload.get("data", {})
+    buyer = data.get("buyer", {})
+    buyer_email = buyer.get("email")
+
+    if not buyer_email:
+        return {"status": "ignored", "reason": "No buyer email provided"}
+
+    # 2. EVENTO: COMPRA APROBADA
+    if event in ["PURCHASE_APPROVED", "ORDER_APPROVED"]:
+        buyer_name = buyer.get("name", buyer_email.split("@")[0])
+        
+        # Buscar si el usuario ya existe o crearlo
+        user = db.query(User).filter(User.email == buyer_email).first()
+        if not user:
+            user = User(
+                username=buyer_name,
+                email=buyer_email,
+                hashed_password=get_password_hash(secrets.token_hex(12))
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # Generar la API Key en texto plano para el usuario
+        raw_key = f"sk_live_{secrets.token_hex(24)}"
+        # Hashear la clave en SHA-256 para guardarla segura en la BD
+        hashed_key = hash_api_key(raw_key)
+
+        # ==============================================================
+        # AQUÍ ES DONDE SE CREA new_license EN LA BASE DE DATOS:
+        # ==============================================================
+        new_license = ApiKey(
+            key_hash=hashed_key,
+            user_email=buyer_email,
+            is_active=True,
+            monthly_limit=1000,
+            owner_id=user.id
+        )
+        db.add(new_license)
+        db.commit()   # <-- Guardado confirmado en base de datos
+        print(f"[HOTMART] Licencia creada en BD para {buyer_email}. Key: {raw_key}")
+
+        # ==============================================================
+        # JUSTO AQUÍ DESPUÉS SE DISPARA EL CORREO CON RESEND:
+        # ==============================================================
+        send_welcome_email(
+            to_email=buyer_email,
+            buyer_name=buyer_name,
+            raw_api_key=raw_key
+        )
+
+        return {"status": "provisioned", "user_email": buyer_email}
+
+    # 3. EVENTO: REEMBOLSO O CANCELACIÓN
+    elif event in ["PURCHASE_REFUNDED", "REFUNDED", "SUBSCRIPTION_CANCELED"]:
+        licenses = db.query(ApiKey).filter(ApiKey.user_email == buyer_email).all()
+        for lic in licenses:
+            lic.is_active = False
+        db.commit()
+        print(f"[HOTMART] Licencias revocadas para {buyer_email}")
+        return {"status": "revoked", "user_email": buyer_email}
+
+    return {"status": "received", "event": event}
+
+# --- RESTO DE ENDPOINTS ---
 @app.get("/")
-def read_root(): return {"message": "SetterMind AI con FastAPI ¡VICTORIA FINAL!"}
+def read_root():
+    return {"message": "SetterMind AI API Online", "framework": "FastAPI", "version": "2.0"}
 
 @app.post("/api/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -107,7 +234,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="El email ya está registrado.")
     hashed_password = get_password_hash(user.password)
     new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
-    db.add(new_user); db.commit()
+    db.add(new_user)
+    db.commit()
     return {"message": "Usuario registrado exitosamente."}
 
 @app.post("/api/login")
@@ -119,87 +247,77 @@ def login_user(user: UserLogin, db: Session = Depends(get_db)):
     return {"token": access_token}
 
 @app.post("/api/prospect")
-def prospect_posts(req: ProspectRequest):
+def prospect_posts(req: ProspectRequest, current_user: User = Depends(get_current_user)):
     posts = find_instagram_posts_by_hashtag(req.hashtag)
-    if posts is None: raise HTTPException(status_code=500, detail="La búsqueda de prospectos falló.")
+    if posts is None:
+        raise HTTPException(status_code=500, detail="La búsqueda de prospectos falló.")
     return {"found_posts": posts}
 
 @app.post("/api/analyze")
 def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Obtenemos los detalles del post, incluyendo el caption.
-    post_details = get_post_details(req.post_url, gemini_model)
+    post_details = get_post_details(req.post_url)
     if not post_details:
-        raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post para el contexto.")
+        raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post.")
 
     comments = scrape_instagram_comments(req.post_url)
-    if not comments: raise HTTPException(status_code=404, detail="No se encontraron comentarios.")
-    
-    # --- ¡CONTEXTO MEJORADO! ---
+    if not comments:
+        raise HTTPException(status_code=404, detail="No se encontraron comentarios.")
+
     context = {
-        "niche": req.niche, 
+        "niche": req.niche,
         "avatar": req.avatar,
-        "caption": post_details.get('caption') # ¡Añadimos el caption!
+        "caption": post_details.get('caption')
     }
-    
-    ai_analysis_json_string = analyze_comments_with_ai(comments, context, gemini_model)
-    if not ai_analysis_json_string: raise HTTPException(status_code=500, detail="Análisis de IA falló.")
-    
+
+    ai_analysis_json_string = analyze_comments_with_ai(comments, context)
+    if not ai_analysis_json_string:
+        raise HTTPException(status_code=500, detail="Análisis de IA falló.")
+
     try:
         ai_results = json.loads(ai_analysis_json_string)
         ai_results['summary'] = f"Analizados {len(comments)} com., IA identificó {len(ai_results.get('leads', []))} prospectos."
         
-        # --- ¡LÓGICA DE GUARDADO ACTIVADA! ---
-        # Usamos el 'current_user' que nos da nuestro guardia de seguridad.
         new_analysis = Analysis(
-            post_url=req.post_url, 
-            result_data=ai_results, 
-            owner_id=current_user.id # Conectamos el análisis al usuario
+            post_url=req.post_url,
+            result_data=ai_results,
+            owner_id=current_user.id
         )
         db.add(new_analysis)
         db.commit()
-        print(f"Análisis para el usuario {current_user.username} guardado en la DB.")
-        
+
+        ai_results["id"] = new_analysis.id
+        ai_results["analysis_id"] = new_analysis.id
         return ai_results
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Respuesta de IA no es JSON válido.")
 
+@app.get("/api/analysis/{analysis_id}")
+def get_analysis(analysis_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    analysis = db.query(Analysis).filter(Analysis.id == analysis_id, Analysis.owner_id == current_user.id).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado.")
+    return {**analysis.result_data, "id": analysis.id, "status": "completed"}
+
 @app.get("/api/history")
 def get_analysis_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # --- ¡LÓGICA REAL DE CONSULTA! ---
-    # Buscamos en la tabla Analysis, filtramos por el ID del usuario y ordenamos.
     user_analyses = db.query(Analysis).filter(Analysis.owner_id == current_user.id).order_by(Analysis.created_at.desc()).all()
-    
-    # Convertimos los resultados a un formato JSON.
-    history_list = [
-        {
-            'id': analysis.id,
-            'post_url': analysis.post_url,
-            'created_at': analysis.created_at.isoformat(),
-            'summary': analysis.result_data.get('summary', 'Sin resumen.')
-        } for analysis in user_analyses
-    ]
-    
-    return {"history": history_list}
+    return {"history": [
+        {'id': a.id, 'post_url': a.post_url, 'created_at': a.created_at.isoformat(), 'summary': a.result_data.get('summary', '')}
+        for a in user_analyses
+    ]}
 
 @app.get("/api/strategies")
 def get_strategies(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user_strategies = db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
-    
-    return user_strategies # FastAPI convierte automáticamente los modelos de SQLAlchemy a JSON
+    return db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
 
 @app.post("/api/generate-strategy")
-# --- ¡MODIFICADO! Añadimos la dependencia del usuario y la DB ---
 def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     context = {"niche": req.niche, "avatar": req.avatar}
-    strategy_json_string = generate_prospecting_strategy(context, gemini_model)
-    
+    strategy_json_string = generate_prospecting_strategy(context)
     if not strategy_json_string:
-        raise HTTPException(status_code=500, detail="La generación de estrategia falló.")
-        
+        raise HTTPException(status_code=500, detail="Generación de estrategia falló.")
     try:
         strategy_data = json.loads(strategy_json_string)
-        
-        # --- ¡NUEVA LÓGICA DE GUARDADO! ---
         new_strategy = Strategy(
             niche=req.niche,
             avatar=req.avatar,
@@ -209,20 +327,80 @@ def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), curre
         )
         db.add(new_strategy)
         db.commit()
-        print(f"Estrategia para el usuario {current_user.username} guardada en la DB.")
-        
         return strategy_data
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="La respuesta de la IA (estrategia) no es un JSON válido.")
+        raise HTTPException(status_code=500, detail="Respuesta no es JSON válido.")
 
 @app.post("/api/get-post-details")
 def fetch_post_details(req: PostDetailsRequest, current_user: User = Depends(get_current_user)):
-    details = get_post_details(req.post_url, gemini_model)
+    details = get_post_details(req.post_url)
     if not details:
-        raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post.")
+        raise HTTPException(status_code=404, detail="No se pudieron obtener detalles.")
     return details
 
-# --- LÓGICA PARA CORRER EL SERVIDOR (si se ejecuta directamente) ---
+@app.get("/api/outbox")
+def list_outbox(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.query(OutboxItem).filter_by(owner_id=current_user.id, status='pending').order_by(OutboxItem.created_at.desc()).all()
+    return [{
+        "id": r.id, "post_url": r.post_url, "prospect_username": r.prospect_username,
+        "prospect_comment": r.prospect_comment, "selected_opener": r.selected_opener,
+        "identified_pain": r.identified_pain, "score": r.score
+    } for r in rows]
+
+@app.post("/api/outbox", status_code=201)
+def add_outbox(req: OutboxCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = OutboxItem(**req.model_dump(), owner_id=current_user.id)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.patch("/api/outbox/{item_id}/sent")
+def mark_sent(item_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(OutboxItem).filter_by(id=item_id, owner_id=current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="No encontrado.")
+    item.status = 'sent'
+    db.add(Conversation(owner_id=current_user.id, status='iniciado', lead_data={
+        "username": item.prospect_username, "comment": item.prospect_comment,
+        "pain_point": item.identified_pain, "score": item.score,
+        "opener": item.selected_opener, "post_url": item.post_url
+    }))
+    db.commit()
+    return {"ok": True}
+
+@app.get("/api/conversations")
+def list_conversations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.query(Conversation).filter_by(owner_id=current_user.id).order_by(Conversation.created_at.desc()).all()
+    return [{"id": r.id, "lead_data": r.lead_data, "status": r.status, "notes": r.notes or "", "exported": r.exported} for r in rows]
+
+@app.post("/api/conversations", status_code=201)
+def create_conversation(req: ConversationCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    conversation = Conversation(owner_id=current_user.id, lead_data=req.lead_data)
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+@app.patch("/api/conversations/{convo_id}")
+def update_conversation(convo_id: str, req: ConversationUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    convo = db.query(Conversation).filter_by(id=convo_id, owner_id=current_user.id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="No encontrado.")
+    if req.notes is not None: convo.notes = req.notes
+    if req.status is not None: convo.status = req.status
+    db.commit()
+    return convo
+
+@app.post("/api/conversations/{convo_id}/export")
+def export_conversation(convo_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    convo = db.query(Conversation).filter_by(id=convo_id, owner_id=current_user.id).first()
+    if not convo:
+        raise HTTPException(status_code=404, detail="No encontrado.")
+    convo.exported = True
+    db.commit()
+    return convo
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))

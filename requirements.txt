@@ -2,11 +2,10 @@ fastapi
 uvicorn[standard]
 python-multipart
 SQLAlchemy
-passlib[bcrypt]
-python-jose[cryptography]
+bcrypt
+PyJWT
 alembic
 psycopg2-binary
-
-selenium
-google-generativeai
+openai
 apify-client
+resend
