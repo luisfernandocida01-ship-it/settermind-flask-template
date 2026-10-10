@@ -22,7 +22,7 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str):
         return None
 
     resend.api_key = RESEND_API_KEY
-    magic_link = f"{APP_URL}/?key={raw_api_key}"
+    magic_link = f"{APP_URL}/register?key={raw_api_key}"
 
     html_content = f"""
     <!DOCTYPE html>
