@@ -7,21 +7,30 @@ client = ApifyClient(APIFY_TOKEN)
 print("--- INICIANDO PRUEBA DIRECTA DE APIFY ---")
 
 try:
-    post_scraper = client.actor("apify/instagram-post-scraper")
-    print("Actor 'post-scraper' encontrado. Ejecutando...")
-    
+    actor = client.actor("apify/instagram-scraper")
+    print("Actor 'instagram-scraper' encontrado. Ejecutando...")
+
     run_input = {
-        "directUrls": ["https://www.instagram.com/p/C6_s-jZPY-C/"], # Una URL pública y reciente
+        "directUrls": ["https://www.instagram.com/p/DcjRQUKxLPV/"],
+        "resultsType": "posts",
         "resultsLimit": 1,
     }
-    
-    run = post_scraper.call(run_input=run_input)
-    
-    print("\n--- RESULTADOS DEL DATASET ---")
-    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-        print(item)
 
-    print("\n--- PRUEBA COMPLETADA ---")
+    run = actor.call(run_input=run_input)
+
+    print("\n--- RESULTADOS DEL DATASET ---")
+    dataset_id = getattr(run, "default_dataset_id", None) or run.get("defaultDatasetId") or run.get("default_dataset_id")
+    dataset_items = list(client.dataset(dataset_id).iterate_items())
+    print(f"Total de registros obtenidos: {len(dataset_items)}")
+
+    for item in dataset_items:
+        print("Owner:", item.get("ownerUsername"))
+        print("Likes:", item.get("likesCount"))
+        print("Comments Count:", item.get("commentsCount"))
+        caption = item.get("caption") or ""
+        print("Caption:", caption[:120], "...")
+
+    print("\n--- PRUEBA COMPLETADA CON ÉXITO ---")
 
 except Exception as e:
     print(f"\n--- ERROR EN LA PRUEBA DIRECTA: {e} ---")
