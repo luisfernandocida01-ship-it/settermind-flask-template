@@ -1,7 +1,7 @@
 import os
 from apify_client import ApifyClient
 
-APIFY_TOKEN = os.environ.get('APIFY_TOKEN')
+APIFY_TOKEN = os.environ.get('APIFY_TOKEN_PLANTILLA') or os.environ.get('APIFY_TOKEN')
 client = ApifyClient(APIFY_TOKEN)
 
 print("--- INICIANDO PRUEBA DIRECTA DE APIFY ---")

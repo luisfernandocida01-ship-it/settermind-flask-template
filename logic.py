@@ -4,7 +4,7 @@ import json
 from apify_client import ApifyClient
 from openai import OpenAI
 
-APIFY_TOKEN = os.environ.get('APIFY_TOKEN_PLANTILLA')
+APIFY_TOKEN = os.environ.get('APIFY_TOKEN_PLANTILLA') or os.environ.get('APIFY_TOKEN')
 apify_client = ApifyClient(APIFY_TOKEN)
 OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 _openai_client = None
