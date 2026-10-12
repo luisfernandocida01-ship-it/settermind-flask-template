@@ -1,120 +1,70 @@
-'use client';
+import html
+import os
+from urllib.parse import urlencode
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from './useAuth';
+import resend
 
-export default function Sidebar() {
-  const pathname = usePathname();
-  const { logout } = useAuth();
 
-  // No mostrar el sidebar en pantallas públicas de autenticación/registro
-  if (pathname === '/login' || pathname === '/register') {
-    return null;
-  }
+def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> object:
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY no está configurada.")
 
-  const navSections = [
-    {
-      phase: 'FASE 1: ESTRATEGIA & RADAR',
-      items: [
-        { name: 'Estrategia & Avatar', path: '/strategies', icon: '✦' },
-        { name: 'Radar de Prospectos', path: '/prospect', icon: '◎' },
-      ],
-    },
-    {
-      phase: 'FASE 2: CONVERSIÓN & MENSAJES',
-      items: [
-        { name: 'Fábrica de Guiones', path: '/content-factory', icon: '💬' },
-        { name: 'Imán de Perfil', path: '/profile-magnet', icon: '🧲' },
-        { name: 'Pipeline & Mensajes', path: '/conversations', icon: '🚀' },
-      ],
-    },
-    {
-      phase: 'FASE 3: GESTIÓN & CUENTA',
-      items: [
-        { name: 'Historial de Análisis', path: '/history', icon: '📋' },
-        { name: 'Recursos & Soporte', path: '/resources', icon: '📚' },
-      ],
-    },
-  ];
+    sender_email = os.environ.get(
+        "SENDER_EMAIL",
+        "SetterMind AI <servicioalcliente@mentesalmercado.online>",
+    )
+    frontend_url = os.environ.get(
+        "FRONTEND_URL",
+        "https://settermind.mentesalmercado.online",
+    ).strip().rstrip("/")
+    if not frontend_url:
+        raise RuntimeError("FRONTEND_URL no puede estar vacío.")
 
-  return (
-    <aside className="w-64 bg-[#0B111A] border-r border-[#1E2D42] min-h-screen flex flex-col justify-between p-5 text-gray-300 shrink-0">
-      <div>
-        {/* Encabezado Marca */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-[#0E2A47] border border-[#D4AF37] text-[#F3C969] font-black flex items-center justify-center text-lg shadow-sm">
-              M
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-base leading-tight">SetterMind AI</h2>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Suite de Prospección</p>
-            </div>
-          </div>
+    magic_link = f"{frontend_url}/register?{urlencode({'key': raw_api_key})}"
+    escaped_name = html.escape(buyer_name)
+    escaped_key = html.escape(raw_api_key)
+    escaped_link = html.escape(magic_link, quote=True)
 
-          <Link
-            href="/"
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-              pathname === '/'
-                ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-900/30'
-                : 'hover:bg-[#111A28] text-gray-300 hover:text-white'
-            }`}
-          >
-            <span>📊</span>
-            <span>Dashboard Principal</span>
-          </Link>
+    html_content = f"""<!doctype html>
+<html lang="es">
+  <body style="margin:0;padding:30px 10px;background:#0B111A;font-family:Arial,sans-serif;color:#CBD5E1">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;margin:auto;background:#111A28;border:1px solid #1E2D42;border-radius:14px">
+      <tr><td style="padding:35px 25px;text-align:center">
+        <div style="margin:0 auto 20px;width:55px;height:55px;line-height:55px;background:#0E2A47;border:2px solid #D4AF37;border-radius:12px;color:#F3C969;font-size:26px;font-weight:bold">M</div>
+        <h1 style="color:#fff;font-size:24px">¡Bienvenido a SetterMind AI!</h1>
+        <p>Hola <strong style="color:#fff">{escaped_name}</strong>, tu cuenta ha sido aprovisionada con éxito.</p>
+        <p>Utiliza este enlace para ingresar:</p>
+        <p style="margin:25px">
+          <a href="{escaped_link}" style="display:inline-block;padding:14px 28px;border-radius:8px;background:#0284C7;color:#fff;text-decoration:none;font-weight:bold">Ingresar a SetterMind AI</a>
+        </p>
+        <p style="font-size:12px;color:#64748B">Si el botón no funciona, copia este enlace:</p>
+        <p><a href="{escaped_link}" style="color:#38BDF8;word-break:break-all">{escaped_link}</a></p>
+        <div style="padding:15px;background:#06090E;border:1px dashed #1E2D42;border-radius:8px;text-align:left">
+          <p style="color:#94A3B8;font-size:11px;font-weight:bold">CLAVE API DE RESPALDO</p>
+          <code style="color:#38BDF8;word-break:break-all">{escaped_key}</code>
+          <p style="color:#64748B;font-size:11px">Guarda esta clave para usarla en otro dispositivo.</p>
         </div>
+        <p style="padding-top:18px;border-top:1px solid #1E2D42;color:#64748B;font-size:12px">
+          Mentes al Mercado · Soporte: servicioalcliente@mentesalmercado.online
+        </p>
+      </td></tr>
+    </table>
+  </body>
+</html>"""
+    text_content = (
+        f"¡Bienvenido a SetterMind AI, {buyer_name}!\n\n"
+        f"Ingresa aquí: {magic_link}\n\n"
+        f"Tu clave API de respaldo: {raw_api_key}\n"
+    )
 
-        {/* Fases de Navegación */}
-        <nav className="space-y-6">
-          {navSections.map((section) => (
-            <div key={section.phase}>
-              <p className="text-[10px] font-bold tracking-wider text-gray-500 uppercase px-3 mb-2">
-                {section.phase}
-              </p>
-              <ul className="space-y-1">
-                {section.items.map((item) => {
-                  const isActive = pathname === item.path;
-                  return (
-                    <li key={item.path}>
-                      <Link
-                        href={item.path}
-                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-semibold transition ${
-                          isActive
-                            ? 'bg-[#162235] text-sky-400 border border-sky-500/30 font-bold'
-                            : 'hover:bg-[#111A28] hover:text-white text-gray-400'
-                        }`}
-                      >
-                        <span className="text-sm">{item.icon}</span>
-                        <span>{item.name}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
-      </div>
-
-      {/* Footer del Menú: Licencia y Logout */}
-      <div className="pt-4 border-t border-[#1E2D42] space-y-3">
-        <div className="bg-[#06090E] border border-[#1E2D42] rounded-lg p-2.5">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400">
-            <span>Licencia Hotmart</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          </div>
-          <p className="text-[10px] text-gray-500 mt-0.5">SaaS-20™ Activo</p>
-        </div>
-
-        <button
-          onClick={logout}
-          className="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-300 text-xs font-bold py-2 px-3 rounded-lg transition text-center"
-        >
-          Cerrar Sesión
-        </button>
-      </div>
-    </aside>
-  );
-}
+    resend.api_key = api_key
+    return resend.Emails.send(
+        {
+            "from": sender_email,
+            "to": [to_email],
+            "subject": "Tu acceso y clave de licencia a SetterMind AI",
+            "html": html_content,
+            "text": text_content,
+        }
+    )
