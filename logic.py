@@ -27,6 +27,23 @@ def generate_ai_json(prompt: str) -> str:
         raise RuntimeError('OpenAI devolvió una respuesta vacía.')
     return content
 
+def generate_ai_text(prompt: str) -> str:
+    global _openai_client
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        raise RuntimeError('Falta configurar OPENAI_API_KEY.')
+    if _openai_client is None:
+        _openai_client = OpenAI(api_key=api_key)
+
+    response = _openai_client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{'role': 'user', 'content': prompt}],
+    )
+    content = response.choices[0].message.content
+    if not content:
+        raise RuntimeError('OpenAI devolvió una respuesta vacía.')
+    return content
+
 def scrape_instagram_comments(url: str):
     print("Iniciando scraping de comentarios con Apify...")
     try:
@@ -194,23 +211,22 @@ def generate_prospecting_strategy(context: dict):
 def generate_highlights_logic(name: str, mission: str, method_name: str, result_example: str):
     prompt = f"""
     Eres un estratega experto en Instagram Branding y High-Ticket Setting.
-    Diseña una estructura de Historias Destacadas (Highlights) altamente persuasiva.
+    Diseña una estructura de Historias Destacadas (Highlights) persuasiva y profesional.
     
     DATOS DEL CLIENTE:
-    - Nombre / Marca: {name}
+    - Nombre o Marca: {name}
     - Misión / Por qué: {mission}
     - Nombre del Método: {method_name}
     - Caso de éxito: {result_example}
     
     Genera un texto bien formateado con 4 Highlights indispensables:
-    1. HISTORIA / ORIGEN (Quién eres y tu por qué)
+    1. HISTORIA / ORIGEN (Quién eres y tu propósito)
     2. MÉTODO (Cómo funciona {method_name})
     3. CASOS DE ÉXITO (Prueba social con {result_example})
     4. CÓMO EMPEZAR (Llamado a la acción directo al DM)
     """
     try:
-        # Si tienes helper de texto libre o generate_ai_json
-        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+        return generate_ai_text(prompt)
     except Exception as e:
         print(f"Error generando highlights: {e}")
         return None
@@ -224,10 +240,10 @@ def generate_content_ideas_logic(topic: str):
     Para cada idea incluye:
     - Gancho (Hook) para los primeros 3 segundos.
     - Desarrollo del dolor o concepto central.
-    - Llamado a la acción (CTA) para que comenten una palabra clave y abrir DM.
+    - Llamado a la acción (CTA) para que comenten una palabra clave e iniciar DM.
     """
     try:
-        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+        return generate_ai_text(prompt)
     except Exception as e:
         print(f"Error generando ideas: {e}")
         return None
@@ -235,7 +251,7 @@ def generate_content_ideas_logic(topic: str):
 
 def generate_lead_magnet_logic(resource_type: str):
     prompt = f"""
-    Eres un especialista en embudos orgánicos.
+    Eres un especialista en embudos orgánicos para Setters.
     Estructura un Lead Magnet irresistible del tipo: '{resource_type}'.
     
     Incluye:
@@ -245,7 +261,7 @@ def generate_lead_magnet_logic(resource_type: str):
     - Mensaje sugerido para entregarlo por mensaje privado (DM).
     """
     try:
-        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+        return generate_ai_text(prompt)
     except Exception as e:
         print(f"Error generando lead magnet: {e}")
         return None
@@ -253,15 +269,15 @@ def generate_lead_magnet_logic(resource_type: str):
 
 def generate_engagement_poll_logic(question: str):
     prompt = f"""
-    Diseña una dinámica de historias de Instagram para abrir conversaciones a partir de esta pregunta/tema: '{question}'.
+    Diseña una dinámica de historias de Instagram para abrir conversaciones de prospección a partir de esta pregunta/tema: '{question}'.
     
     Genera:
     - 3 Historias de contexto previo.
-    - 1 Sticker de Encuesta / Pregunta con opciones estratégicas (una opción que revele necesidad o dolor urgente).
+    - 1 Sticker de Encuesta / Pregunta con opciones estratégicas (una opción que revele dolor urgente).
     - Guion rompehielo para responder a quienes voten la opción de dolor.
     """
     try:
-        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+        return generate_ai_text(prompt)
     except Exception as e:
         print(f"Error generando engagement poll: {e}")
         return None
@@ -276,18 +292,18 @@ def generate_profile_magnet_logic(niche: str, transformation: str, lead_magnet: 
     - Transformación: {transformation}
     - Lead Magnet / Recurso: {lead_magnet or 'Guía Gratuita'}
     
-    Genera un objeto JSON con dos claves obligatorias: "bio" y "cta".
+    Genera un objeto en formato JSON con dos claves obligatorias: "bio" y "cta".
     "bio": Una biografía estructurada en 3 o 4 líneas con emojis.
-    "cta": Un llamado a la acción persuasivo hacia el DM o el enlace de la bio.
+    "cta": Un llamado a la acción persuasivo hacia el DM o enlace de la bio.
     
-    FORMATO OBLIGATORIO:
+    FORMATO JSON OBLIGATORIO:
     {{
       "bio": "Texto de la biografía",
       "cta": "Texto del llamado a la acción"
     }}
     """
     try:
-        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+        return generate_ai_json(prompt)
     except Exception as e:
         print(f"Error generando perfil magnético: {e}")
         return None
