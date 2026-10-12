@@ -72,7 +72,10 @@ def get_db():
 class UserCreate(BaseModel): username: str; email: str; password: str
 class UserLogin(BaseModel): email: str; password: str
 class ProspectRequest(BaseModel): hashtag: str
-class AnalyzeRequest(BaseModel): post_url: str; niche: str; avatar: str
+class AnalyzeRequest(BaseModel):
+    post_url: str
+    niche: str = "General"
+    avatar: str = "Audiencia interesada"
 class StrategyRequest(BaseModel): niche: str; avatar: str
 class PostDetailsRequest(BaseModel): post_url: str
 class OutboxCreate(BaseModel):
