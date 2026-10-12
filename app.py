@@ -296,7 +296,7 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
     context = {
         "niche": req.niche,
         "avatar": req.avatar,
-        "caption": post_details.get('caption')
+        "caption": post_caption
     }
 
     ai_analysis_json_string = analyze_comments_with_ai(comments, context)
@@ -320,6 +320,15 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
         return ai_results
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Respuesta de IA no es JSON válido.")
+# Al final de analyze_post en app.py:
+    return {
+        "analysis_id": new_analysis.id,
+        "id": new_analysis.id,
+        "summary": ai_results.get('summary', ''),
+        "leads": ai_results.get('leads', []),
+        "comments": comments,  # <--- RETORNAR LOS COMENTARIOS SCRAPEADOS
+        "post_details": post_details,
+    }
 
 @app.get("/api/analysis/{analysis_id}")
 def get_analysis(analysis_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
