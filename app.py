@@ -278,6 +278,7 @@ def prospect_posts(req: ProspectRequest, current_user: User = Depends(get_curren
         raise HTTPException(status_code=500, detail="La búsqueda de prospectos falló.")
     return {"found_posts": posts}
 
+@app.post("/api/analyze-post")
 @app.post("/api/analyze")
 def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     post_details = get_post_details(req.post_url)
