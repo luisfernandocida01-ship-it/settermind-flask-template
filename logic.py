@@ -47,15 +47,25 @@ def generate_ai_text(prompt: str) -> str:
 def scrape_instagram_comments(url: str):
     print("Iniciando scraping de comentarios con Apify...")
     try:
-        actor_run = apify_client.actor("apify/instagram-comment-scraper").call(
-            run_input={"directUrls": [url], "resultsLimit": 100}
-        )
+        dataset_id = None
+        actor = apify_client.actor("apify/instagram-comment-scraper")
+        actor_run = actor.call(run_input={"directUrls": [url], "resultsLimit": 100})
+        
+        dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
+        
         comments = []
-        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
+        for item in apify_client.dataset(dataset_id).iterate_items():
             text = item.get("text") or item.get("comment")
+            # Apify suele devolver el autor en 'ownerUsername' o en 'user.username'
+            owner = item.get("ownerUsername") or (item.get("user") or {}).get("username") or item.get("username") or "prospecto"
+            
             if isinstance(text, str) and text.strip():
-                comments.append(text.strip())
-        print(f"Scraping finalizado: {len(comments)} comentarios.")
+                comments.append({
+                    "username": owner.replace("@", "").strip(),
+                    "text": text.strip()
+                })
+                
+        print(f"Scraping finalizado: {len(comments)} comentarios procesados con autor.")
         return comments
     except Exception as e:
         print(f"Error al extraer comentarios con Apify: {e}")
@@ -95,9 +105,16 @@ def analyze_profile_with_ai(biography: str):
 
 def analyze_comments_with_ai(comments: list, context: dict):
     print("Iniciando análisis de CONGRUENCIA con OpenAI...")
-    comments_text_block = "\n".join(f"- {c}" for c in comments)
     
-    # --- ¡PROMPT MEJORADO CON CONGRUENCIA! ---
+    # Formatear el bloque preservando el autor del comentario
+    comments_lines = []
+    for c in comments:
+        if isinstance(c, dict):
+            comments_lines.append(f"[@{c.get('username', 'usuario')}]: {c.get('text', '')}")
+        else:
+            comments_lines.append(f"- {c}")
+    comments_text_block = "\n".join(comments_lines)
+    
     prompt = f"""
         **IDENTIDAD:** Eres 'SetterMind AI', un experto en análisis de prospectos y congruencia de mercado.
 
@@ -118,20 +135,32 @@ def analyze_comments_with_ai(comments: list, context: dict):
         1.  **FILTRA:** Ignora comentarios inútiles (spam, emojis solos, texto de la interfaz).
         2.  **IDENTIFICA:** Selecciona un máximo de 5-7 comentarios que sean prospectos REALES.
         3.  **ANALIZA CADA PROSPECTO:** Para cada uno, proporciona la siguiente información:
-            *   **comment_text:** El texto original.
-            *   **pain_point_identified:** Describe el dolor o necesidad del prospecto. **Considera si su dolor es congruente con la solución que ofrece MI PRODUCTO.**
+            *   **username:** El usuario exacto de Instagram que hizo el comentario (sin el @).
+            *   **comment_text:** El texto original del comentario.
+            *   **pain_point_identified:** Describe el dolor o necesidad del prospecto. Considera si su dolor es congruente con la solución que ofrece MI PRODUCTO.
             *   **potential_score:** Una puntuación de 1 a 10, donde 10 es un prospecto perfecto y altamente congruente.
             *   **suggested_openers:** Genera 3 openers que conecten su dolor con la solución de MI PRODUCTO.
 
         **FORMATO DE SALIDA (JSON Obligatorio):**
-        {{ "leads": [ ... ] }}
+        {{
+          "leads": [
+            {{
+              "username": "usuario_real",
+              "comment_text": "texto del comentario",
+              "pain_point_identified": "explicación del dolor",
+              "potential_score": 8,
+              "suggested_openers": ["opener 1", "opener 2", "opener 3"]
+            }}
+          ]
+        }}
     """
     try:
         response_content = generate_ai_json(prompt)
         print("Análisis de congruencia completado.")
         return response_content
     except Exception as e:
-        print(f"Error con API de OpenAI: {e}"); return None
+        print(f"Error en analyze_comments_with_ai: {e}")
+        return None
 
 def find_instagram_posts_by_hashtag(hashtag: str):
     cleaned_hashtag = hashtag.strip().replace("#", "")
