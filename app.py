@@ -290,7 +290,9 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
     comments = scrape_instagram_comments(req.post_url)
     if not comments:
         raise HTTPException(status_code=404, detail="No se encontraron comentarios.")
-
+    post_caption = ""
+    if isinstance(post_details, dict):
+        post_caption = post_details.get('caption') or (post_details.get('post', {})).get('caption', '')
     context = {
         "niche": req.niche,
         "avatar": req.avatar,

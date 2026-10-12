@@ -318,31 +318,47 @@ def get_post_details(url: str):
         run_input = {"directUrls": [url], "resultsType": "posts", "resultsLimit": 1}
         actor_run = actor.call(run_input=run_input)
         
-        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
-            # Primero, recolectamos los datos del post
-            post_details = {
-                "caption": item.get('caption', 'Sin descripción.'),
-                "ownerUsername": item.get('ownerUsername', 'N/A'),
-                "likesCount": item.get('likesCount', 0),
-                "commentsCount": item.get('commentsCount', 0)
-            }
-            
-            # Ahora, obtenemos la biografía del autor
-            author_bio = item.get('ownerBiography', '')
-            
-            # ¡LA NUEVA MAGIA! Llamamos a nuestra nueva función de análisis de perfil
-            profile_analysis = analyze_profile_with_ai(author_bio)
-            
-            print("Detalles y análisis de perfil obtenidos con éxito.")
-            # Devolvemos un objeto que contiene AMBAS piezas de información
-            return {
-                "post": post_details,
-                "profile": profile_analysis
-            }
+        dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
+        items = list(apify_client.dataset(dataset_id).iterate_items())
         
-        print("No se encontraron items en el dataset de Apify.")
-        return None
+        if not items:
+            print("No se encontraron items en el dataset de Apify.")
+            return None
+
+        item = items[0]
+        post_details = {
+            "caption": item.get('caption') or 'Sin descripción.',
+            "ownerUsername": item.get('ownerUsername') or 'usuario_desconocido',
+            "likesCount": item.get('likesCount', 0),
+            "commentsCount": item.get('commentsCount', 0)
+        }
+        
+        # Biografía del autor o fallback al caption para deducir el nicho
+        author_bio = item.get('ownerBiography') or post_details["caption"]
+        
+        profile_analysis = None
+        if author_bio:
+            try:
+                profile_analysis = analyze_profile_with_ai(author_bio)
+            except Exception as err:
+                print(f"Error analizando perfil con IA: {err}")
+                profile_analysis = {"niche": "General", "avatar": "Audiencia interesada"}
+        else:
+            profile_analysis = {"niche": "General", "avatar": "Audiencia interesada"}
+        
+        print("Detalles y análisis de perfil obtenidos con éxito.")
+        return {
+            "post": post_details,
+            "profile": profile_analysis,
+            # Propiedades en la raíz para compatibilidad con el frontend
+            "caption": post_details["caption"],
+            "ownerUsername": post_details["ownerUsername"],
+            "likesCount": post_details["likesCount"],
+            "commentsCount": post_details["commentsCount"],
+            "niche": profile_analysis.get("niche", "General") if isinstance(profile_analysis, dict) else "General",
+            "avatar": profile_analysis.get("avatar", "Audiencia interesada") if isinstance(profile_analysis, dict) else "Audiencia interesada"
+        }
 
     except Exception as e:
-        print(f"Error al obtener detalles enriquecidos: {e}")
+        print(f"Error en get_post_details: {e}")
         return None
