@@ -190,7 +190,108 @@ def generate_prospecting_strategy(context: dict):
     except Exception as e:
         print(f"Error con API de OpenAI al generar estrategia: {e}")
         return None
+
+def generate_highlights_logic(name: str, mission: str, method_name: str, result_example: str):
+    prompt = f"""
+    Eres un estratega experto en Instagram Branding y High-Ticket Setting.
+    Diseña una estructura de Historias Destacadas (Highlights) altamente persuasiva.
     
+    DATOS DEL CLIENTE:
+    - Nombre / Marca: {name}
+    - Misión / Por qué: {mission}
+    - Nombre del Método: {method_name}
+    - Caso de éxito: {result_example}
+    
+    Genera un texto bien formateado con 4 Highlights indispensables:
+    1. HISTORIA / ORIGEN (Quién eres y tu por qué)
+    2. MÉTODO (Cómo funciona {method_name})
+    3. CASOS DE ÉXITO (Prueba social con {result_example})
+    4. CÓMO EMPEZAR (Llamado a la acción directo al DM)
+    """
+    try:
+        # Si tienes helper de texto libre o generate_ai_json
+        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+    except Exception as e:
+        print(f"Error generando highlights: {e}")
+        return None
+
+
+def generate_content_ideas_logic(topic: str):
+    prompt = f"""
+    Eres un creador de contenido viral y estratega de conversión para Setters.
+    Genera 5 ideas de contenido accionables para el tema: '{topic}'.
+    
+    Para cada idea incluye:
+    - Gancho (Hook) para los primeros 3 segundos.
+    - Desarrollo del dolor o concepto central.
+    - Llamado a la acción (CTA) para que comenten una palabra clave y abrir DM.
+    """
+    try:
+        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+    except Exception as e:
+        print(f"Error generando ideas: {e}")
+        return None
+
+
+def generate_lead_magnet_logic(resource_type: str):
+    prompt = f"""
+    Eres un especialista en embudos orgánicos.
+    Estructura un Lead Magnet irresistible del tipo: '{resource_type}'.
+    
+    Incluye:
+    - Título gancho de alta conversión.
+    - Promesa única de valor.
+    - Esquema de 3 a 5 puntos clave que debe contener.
+    - Mensaje sugerido para entregarlo por mensaje privado (DM).
+    """
+    try:
+        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+    except Exception as e:
+        print(f"Error generando lead magnet: {e}")
+        return None
+
+
+def generate_engagement_poll_logic(question: str):
+    prompt = f"""
+    Diseña una dinámica de historias de Instagram para abrir conversaciones a partir de esta pregunta/tema: '{question}'.
+    
+    Genera:
+    - 3 Historias de contexto previo.
+    - 1 Sticker de Encuesta / Pregunta con opciones estratégicas (una opción que revele necesidad o dolor urgente).
+    - Guion rompehielo para responder a quienes voten la opción de dolor.
+    """
+    try:
+        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+    except Exception as e:
+        print(f"Error generando engagement poll: {e}")
+        return None
+
+
+def generate_profile_magnet_logic(niche: str, transformation: str, lead_magnet: str):
+    prompt = f"""
+    Eres un consultor de optimización de biografías de Instagram de alta conversión.
+    
+    DATOS:
+    - Nicho: {niche}
+    - Transformación: {transformation}
+    - Lead Magnet / Recurso: {lead_magnet or 'Guía Gratuita'}
+    
+    Genera un objeto JSON con dos claves obligatorias: "bio" y "cta".
+    "bio": Una biografía estructurada en 3 o 4 líneas con emojis.
+    "cta": Un llamado a la acción persuasivo hacia el DM o el enlace de la bio.
+    
+    FORMATO OBLIGATORIO:
+    {{
+      "bio": "Texto de la biografía",
+      "cta": "Texto del llamado a la acción"
+    }}
+    """
+    try:
+        return generate_ai_json(prompt) if "generate_ai_json" in globals() else None
+    except Exception as e:
+        print(f"Error generando perfil magnético: {e}")
+        return None
+
 def get_post_details(url: str):
     """
     Usa Apify para obtener detalles del post y OpenAI para analizar el perfil del autor.

@@ -21,7 +21,12 @@ from logic import (
     analyze_comments_with_ai,
     find_instagram_posts_by_hashtag,
     generate_prospecting_strategy,
-    get_post_details
+    get_post_details,
+    generate_highlights_logic,
+    generate_content_ideas_logic,
+    generate_lead_magnet_logic,
+    generate_engagement_poll_logic,
+    generate_profile_magnet_logic,
 )
 
 # --- CONFIGURACIÓN DE ENTORNO ---
@@ -81,6 +86,26 @@ class ConversationCreate(BaseModel): lead_data: dict[str, Any]
 class ConversationUpdate(BaseModel):
     notes: Optional[str] = None
     status: Optional[str] = None
+
+class HighlightsRequest(BaseModel):
+    name: str
+    mission: str
+    method_name: str
+    result_example: str
+
+class ContentIdeasRequest(BaseModel):
+    topic: str
+
+class LeadMagnetRequest(BaseModel):
+    resource_type: str
+
+class EngagementPollRequest(BaseModel):
+    question: str
+
+class ProfileMagnetRequest(BaseModel):
+    niche: str
+    transformation: str
+    lead_magnet: Optional[str] = ""
 
 # --- CRIPTOGRAFÍA & AUTH DUAL (JWT + SHA-256 API KEY) ---
 def hash_api_key(raw_key: str) -> str:
@@ -400,6 +425,45 @@ def export_conversation(convo_id: str, current_user: User = Depends(get_current_
     convo.exported = True
     db.commit()
     return convo
+
+@app.post("/api/generate-highlights")
+def api_generate_highlights(req: HighlightsRequest, current_user: User = Depends(get_current_user)):
+    res = generate_highlights_logic(req.name, req.mission, req.method_name, req.result_example)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al generar highlights.")
+    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+
+@app.post("/api/generate-content-ideas")
+def api_generate_content_ideas(req: ContentIdeasRequest, current_user: User = Depends(get_current_user)):
+    res = generate_content_ideas_logic(req.topic)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al generar ideas.")
+    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+
+@app.post("/api/generate-lead-magnet-plan")
+def api_generate_lead_magnet(req: LeadMagnetRequest, current_user: User = Depends(get_current_user)):
+    res = generate_lead_magnet_logic(req.resource_type)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al generar el recurso.")
+    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+
+@app.post("/api/generate-engagement-poll")
+def api_generate_engagement(req: EngagementPollRequest, current_user: User = Depends(get_current_user)):
+    res = generate_engagement_poll_logic(req.question)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al generar dinámica.")
+    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+
+@app.post("/api/generate-profile-magnet")
+def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = Depends(get_current_user)):
+    res = generate_profile_magnet_logic(req.niche, req.transformation, req.lead_magnet)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al optimizar perfil.")
+    try:
+        data = json.loads(res) if isinstance(res, str) else res
+        return data
+    except Exception:
+        return {"bio": str(res), "cta": "Envía un mensaje privado para más detalles."}
 
 if __name__ == "__main__":
     import uvicorn
