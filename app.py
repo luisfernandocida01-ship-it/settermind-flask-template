@@ -61,6 +61,16 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
+# Migración ligera para agregar saved_posts si falta
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
+        conn.commit()
+        print("Columna saved_posts agregada exitosamente a strategies.")
+    except Exception as e:
+        # Si ya existe la columna o la base es sqlite y no soporta cierta sintaxis, se ignora
+        print(f"Nota de migración saved_posts (probablemente ya existe): {e}")
+
 def get_db():
     db = SessionLocal()
     try:
@@ -352,19 +362,23 @@ def get_analysis_history(db: Session = Depends(get_db), current_user: User = Dep
 
 @app.get("/api/strategies")
 def get_user_strategies(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    strats = db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
-    results = []
-    for s in strats:
-        results.append({
-            "id": s.id,
-            "niche": s.niche,
-            "avatar": s.avatar,
-            "keywords": s.keywords or [],
-            "hashtags": s.hashtags or [],
-            "saved_posts": s.saved_posts or [],
-            "created_at": s.created_at.isoformat() if s.created_at else None
-        })
-    return {"strategies": results}
+    try:
+        strats = db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
+        results = []
+        for s in strats:
+            results.append({
+                "id": str(s.id),
+                "niche": s.niche,
+                "avatar": s.avatar,
+                "keywords": s.keywords or [],
+                "hashtags": s.hashtags or [],
+                "saved_posts": getattr(s, 'saved_posts', []) or [],
+                "created_at": s.created_at.isoformat() if s.created_at else None
+            })
+        return {"strategies": results}
+    except Exception as e:
+        print(f"Error cargando estrategias: {e}")
+        return {"strategies": []}
 
 @app.post("/api/generate-strategy")
 def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
