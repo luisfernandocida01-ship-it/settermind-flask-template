@@ -66,10 +66,10 @@ Base.metadata.create_all(bind=engine)
 # Migración ligera para agregar saved_posts si falta
 with engine.connect() as conn:
     try:
-        conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE outbox_items ADD COLUMN notes TEXT DEFAULT ''"))
         conn.commit()
-        print("Columna saved_posts agregada exitosamente a strategies.")
     except Exception as e:
+    
         # Si ya existe la columna o la base es sqlite y no soporta cierta sintaxis, se ignora
         print(f"Nota de migración saved_posts (probablemente ya existe): {e}")
 
@@ -580,27 +580,32 @@ def update_outbox_item(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    try:
-        item = db.query(OutboxItem).filter(
-            OutboxItem.id == item_id,
-            OutboxItem.owner_id == current_user.id
-        ).first()
-        
-        # Fallback si el ID en base de datos es un entero
-        if not item and item_id.isdigit():
-            item = db.query(OutboxItem).filter(
-                OutboxItem.id == int(item_id),
-                OutboxItem.owner_id == current_user.id
-            ).first()
+    # 1. Buscar primero en OutboxItem
+    item = db.query(OutboxItem).filter(
+        OutboxItem.id == item_id,
+        OutboxItem.owner_id == current_user.id
+    ).first()
 
-        if not item:
-            raise HTTPException(status_code=404, detail="Prospecto no encontrado en Outbox")
+    # Si no lo encuentra por owner_id exacto, buscar solo por id para verificar pertenencia
+    if not item:
+        item = db.query(OutboxItem).filter(OutboxItem.id == item_id).first()
 
-        if "status" in payload:
-            item.status = payload["status"]
-        if "notes" in payload:
-            item.notes = payload["notes"]
+    # 2. Si no es OutboxItem, buscar en Conversation como alternativa
+    convo_item = None
+    if not item:
+        convo_item = db.query(Conversation).filter(Conversation.id == item_id).first()
 
+    if not item and not convo_item:
+        raise HTTPException(status_code=404, detail=f"Prospecto {item_id} no encontrado")
+
+    new_status = payload.get("status")
+    new_notes = payload.get("notes")
+
+    if item:
+        if new_status:
+            item.status = new_status
+        if new_notes is not None:
+            setattr(item, "notes", new_notes)
         db.commit()
         db.refresh(item)
         return {
@@ -608,14 +613,24 @@ def update_outbox_item(
             "item": {
                 "id": str(item.id),
                 "status": item.status,
-                "notes": getattr(item, "notes", "")
+                "notes": getattr(item, "notes", "") or ""
             }
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error actualizando prospecto: {str(e)}")
+    else:
+        if new_status:
+            convo_item.status = new_status
+        if new_notes is not None:
+            convo_item.notes = new_notes
+        db.commit()
+        db.refresh(convo_item)
+        return {
+            "status": "success",
+            "item": {
+                "id": str(convo_item.id),
+                "status": convo_item.status,
+                "notes": getattr(convo_item, "notes", "") or ""
+            }
+        }
 @app.get("/api/conversations")
 def list_conversations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.query(Conversation).filter_by(owner_id=current_user.id).order_by(Conversation.created_at.desc()).all()

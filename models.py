@@ -2,6 +2,8 @@
 from sqlalchemy import Boolean, Column, String, DateTime, JSON, ForeignKey, Integer
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
+from sqlalchemy import Text
+
 import uuid
 
 Base = declarative_base()
@@ -62,6 +64,7 @@ class OutboxItem(Base):
     score = Column(String, default='')
     selected_opener = Column(String, nullable=False)
     status = Column(String, default='pending')
+    notes = Column(Text, default='')  # <--- Agregar esta línea
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
 
