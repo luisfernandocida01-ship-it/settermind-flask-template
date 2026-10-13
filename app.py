@@ -5,7 +5,6 @@ import hashlib
 import secrets
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi import Body
-from fastapi import Outbox
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -15,7 +14,6 @@ from pydantic import BaseModel
 from typing import Any, Optional
 import bcrypt
 from mailer import send_welcome_email
-
 # Modelos y Lógica
 from models import Base, User, ApiKey, Analysis, Strategy, OutboxItem, Conversation
 from logic import (
@@ -496,7 +494,7 @@ def add_to_outbox(
 
         score = item_data.get("score") or item_data.get("potential_score") or 8
 
-        new_outbox = Outbox(
+        new_outbox = OutboxItem(
             prospect_username=username,
             prospect_comment=comment,
             identified_pain=pain,
