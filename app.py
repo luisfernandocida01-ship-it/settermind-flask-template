@@ -461,7 +461,6 @@ def add_to_outbox(
     db: Session = Depends(get_db)
 ):
     try:
-        # Extraer username sin importar cómo lo envió el cliente
         username = (
             item_data.get("prospect_username")
             or item_data.get("username")
@@ -469,7 +468,6 @@ def add_to_outbox(
             or "prospecto_ig"
         ).replace("@", "").strip()
 
-        # Extraer comentario original
         comment = (
             item_data.get("prospect_comment")
             or item_data.get("comment_text")
@@ -477,7 +475,6 @@ def add_to_outbox(
             or ""
         )
 
-        # Extraer dolor detectado
         pain = (
             item_data.get("identified_pain")
             or item_data.get("pain_point_identified")
@@ -485,87 +482,37 @@ def add_to_outbox(
             or ""
         )
 
-        # Extraer opener
         opener = (
             item_data.get("selected_opener")
             or item_data.get("opener")
             or ""
         )
 
-        score = item_data.get("score") or item_data.get("potential_score") or 8
+        # Evitar NOT NULL constraint failed: post_url
+        post_url = (
+            item_data.get("post_url")
+            or item_data.get("url")
+            or item_data.get("postUrl")
+            or "https://instagram.com"
+        )
+
+        score = str(item_data.get("score") or item_data.get("potential_score") or 8)
 
         new_outbox = OutboxItem(
+            post_url=post_url,
             prospect_username=username,
             prospect_comment=comment,
             identified_pain=pain,
             selected_opener=opener,
             score=score,
             status="pending",
+            notes="",
             owner_id=current_user.id
         )
         db.add(new_outbox)
         db.commit()
         db.refresh(new_outbox)
-        return {"status": "success", "id": new_outbox.id}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error guardando en Outbox: {str(e)}")
-
-@app.post("/api/outbox")
-def add_to_outbox(
-    item_data: dict = Body(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    try:
-        username = (
-            item_data.get("prospect_username")
-            or item_data.get("username")
-            or item_data.get("prospectUsername")
-            or "prospecto_ig"
-        ).replace("@", "").strip()
-
-        comment = (
-            item_data.get("prospect_comment")
-            or item_data.get("comment_text")
-            or item_data.get("comment")
-            or ""
-        )
-
-        pain = (
-            item_data.get("identified_pain")
-            or item_data.get("pain_point_identified")
-            or item_data.get("pain")
-            or ""
-        )
-
-        opener = (
-            item_data.get("selected_opener")
-            or item_data.get("opener")
-            or ""
-        )
-
-        score = item_data.get("score") or item_data.get("potential_score") or 8
-
-        # Estructura del lead compatible con el modelo Conversation
-        lead_payload = {
-            "prospect_username": username,
-            "username": username,
-            "prospect_comment": comment,
-            "identified_pain": pain,
-            "selected_opener": opener,
-            "score": score
-        }
-
-        new_item = Conversation(
-            lead_data=lead_payload,
-            status="pending",
-            owner_id=current_user.id
-        )
-        db.add(new_item)
-        db.commit()
-        db.refresh(new_item)
-        return {"status": "success", "id": new_item.id}
+        return {"status": "success", "id": str(new_outbox.id)}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error guardando en Outbox: {str(e)}")

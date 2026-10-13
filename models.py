@@ -3,7 +3,6 @@ from sqlalchemy import Boolean, Column, String, DateTime, JSON, ForeignKey, Inte
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 from sqlalchemy import Text
-
 import uuid
 
 Base = declarative_base()
@@ -36,7 +35,7 @@ class ApiKey(Base):
 class Analysis(Base):
     __tablename__ = 'analyses'
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    post_url = Column(String, nullable=False)
+    post_url = Column(String, nullable=True, default='')
     created_at = Column(DateTime, default=datetime.utcnow)
     result_data = Column(JSON, nullable=False)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
@@ -67,6 +66,7 @@ class OutboxItem(Base):
     notes = Column(Text, default='')  # <--- Agregar esta línea
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    owner = relationship('User', back_populates='outbox_items')
 
 class Conversation(Base):
     __tablename__ = 'conversations'
