@@ -57,14 +57,30 @@ def scrape_instagram_comments(url: str):
         for item in apify_client.dataset(dataset_id).iterate_items():
             text = item.get("text") or item.get("comment")
             # Apify suele devolver el autor en 'ownerUsername' o en 'user.username'
-            owner = item.get("ownerUsername") or (item.get("user") or {}).get("username") or item.get("username") or "prospecto"
+            # Búsqueda en cascada en todas las variantes de Apify
+            owner_obj = item.get("owner") if isinstance(item.get("owner"), dict) else {}
+            user_obj = item.get("user") if isinstance(item.get("user"), dict) else {}
+            author_obj = item.get("author") if isinstance(item.get("author"), dict) else {}
+            
+            raw_owner = (
+                item.get("ownerUsername")
+                or owner_obj.get("username")
+                or user_obj.get("username")
+                or author_obj.get("username")
+                or item.get("username")
+                or item.get("authorUsername")
+                or item.get("ownerFullName")
+                or "prospecto_ig"
+            )
+            clean_username = str(raw_owner).replace("@", "").strip()
             
             if isinstance(text, str) and text.strip():
                 comments.append({
-                    "username": owner.replace("@", "").strip(),
+                    "username": clean_username,
                     "text": text.strip()
                 })
-                
+        
+               
         print(f"Scraping finalizado: {len(comments)} comentarios procesados con autor.")
         return comments
     except Exception as e:

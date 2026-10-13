@@ -4,6 +4,8 @@ import json
 import hashlib
 import secrets
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
+from fastapi import Body
+from fastapi import Outbox
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -447,28 +449,141 @@ def list_outbox(current_user: User = Depends(get_current_user), db: Session = De
         "identified_pain": r.identified_pain, "score": r.score
     } for r in rows]
 
-@app.post("/api/outbox", status_code=201)
-def add_outbox(req: OutboxCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    item = OutboxItem(**req.model_dump(), owner_id=current_user.id)
-    db.add(item)
+@app.post("/api/outbox")
+def add_to_outbox(
+    item_data: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Extraer username sin importar cómo lo envió el cliente
+        username = (
+            item_data.get("prospect_username")
+            or item_data.get("username")
+            or item_data.get("prospectUsername")
+            or "prospecto_ig"
+        ).replace("@", "").strip()
+
+        # Extraer comentario original
+        comment = (
+            item_data.get("prospect_comment")
+            or item_data.get("comment_text")
+            or item_data.get("comment")
+            or ""
+        )
+
+        # Extraer dolor detectado
+        pain = (
+            item_data.get("identified_pain")
+            or item_data.get("pain_point_identified")
+            or item_data.get("pain")
+            or ""
+        )
+
+        # Extraer opener
+        opener = (
+            item_data.get("selected_opener")
+            or item_data.get("opener")
+            or ""
+        )
+
+        score = item_data.get("score") or item_data.get("potential_score") or 8
+
+        new_outbox = Outbox(
+            prospect_username=username,
+            prospect_comment=comment,
+            identified_pain=pain,
+            selected_opener=opener,
+            score=score,
+            status="pending",
+            owner_id=current_user.id
+        )
+        db.add(new_outbox)
+        db.commit()
+        db.refresh(new_outbox)
+        return {"status": "success", "id": new_outbox.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error guardando en Outbox: {str(e)}")
+
+@app.post("/api/outbox")
+def add_to_outbox(
+    item_data: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        username = (
+            item_data.get("prospect_username")
+            or item_data.get("username")
+            or item_data.get("prospectUsername")
+            or "prospecto_ig"
+        ).replace("@", "").strip()
+
+        comment = (
+            item_data.get("prospect_comment")
+            or item_data.get("comment_text")
+            or item_data.get("comment")
+            or ""
+        )
+
+        pain = (
+            item_data.get("identified_pain")
+            or item_data.get("pain_point_identified")
+            or item_data.get("pain")
+            or ""
+        )
+
+        opener = (
+            item_data.get("selected_opener")
+            or item_data.get("opener")
+            or ""
+        )
+
+        score = item_data.get("score") or item_data.get("potential_score") or 8
+
+        # Estructura del lead compatible con el modelo Conversation
+        lead_payload = {
+            "prospect_username": username,
+            "username": username,
+            "prospect_comment": comment,
+            "identified_pain": pain,
+            "selected_opener": opener,
+            "score": score
+        }
+
+        new_item = Conversation(
+            lead_data=lead_payload,
+            status="pending",
+            owner_id=current_user.id
+        )
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+        return {"status": "success", "id": new_item.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error guardando en Outbox: {str(e)}")
+
+@app.patch("/api/outbox/{item_id}")
+def update_outbox_item(
+    item_id: str,
+    payload: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    item = db.query(Conversation).filter(Conversation.id == item_id, Conversation.owner_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Elemento no encontrado")
+
+    if "status" in payload:
+        item.status = payload["status"]
+    if "notes" in payload:
+        item.notes = payload["notes"]
+
     db.commit()
     db.refresh(item)
-    return item
-
-@app.patch("/api/outbox/{item_id}/sent")
-def mark_sent(item_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    item = db.query(OutboxItem).filter_by(id=item_id, owner_id=current_user.id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="No encontrado.")
-    item.status = 'sent'
-    db.add(Conversation(owner_id=current_user.id, status='iniciado', lead_data={
-        "username": item.prospect_username, "comment": item.prospect_comment,
-        "pain_point": item.identified_pain, "score": item.score,
-        "opener": item.selected_opener, "post_url": item.post_url
-    }))
-    db.commit()
-    return {"ok": True}
-
+    return {"status": "success", "item": {"id": item.id, "status": item.status, "notes": item.notes}}
 @app.get("/api/conversations")
 def list_conversations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.query(Conversation).filter_by(owner_id=current_user.id).order_by(Conversation.created_at.desc()).all()
