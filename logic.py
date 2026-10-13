@@ -178,11 +178,18 @@ def analyze_comments_with_ai(comments: list, context: dict):
         print(f"Error en analyze_comments_with_ai: {e}")
         return None
 
+import unicodedata
+
+def clean_tag(text: str) -> str:
+    """Elimina acentos, tildes y símbolos para maximizar compatibilidad con Instagram/Apify"""
+    nfkd = unicodedata.normalize('NFKD', text)
+    cleaned = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    return cleaned.replace("#", "").strip().lower()
+
 def find_instagram_posts_by_hashtag(hashtag: str):
-    cleaned_hashtag = hashtag.strip().replace("#", "")
+    cleaned_hashtag = clean_tag(hashtag)
     print(f"Iniciando BÚSQUEDA de #{cleaned_hashtag} con Apify...")
     try:
-        # Aumentamos el límite para asegurar abundancia de posts comentados
         run_input = {
             "hashtags": [cleaned_hashtag],
             "resultsType": "top",
@@ -190,10 +197,9 @@ def find_instagram_posts_by_hashtag(hashtag: str):
         }
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
         
-        posts_data = []
+        all_posts = []
         dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
         
-        # Palabras comunes en español para priorizar
         spanish_markers = {" el ", " la ", " de ", " en ", " y ", " que ", " para ", " con ", " por ", " tu ", " tus ", " los ", " las "}
         
         for item in apify_client.dataset(dataset_id).iterate_items():
@@ -224,33 +230,38 @@ def find_instagram_posts_by_hashtag(hashtag: str):
             )
             
             caption_text = item.get('caption') or item.get('text') or ''
+            cap_lower = f" {caption_text.lower()} "
+            is_spanish = 1 if any(m in cap_lower for m in spanish_markers) else 0
             
-            # FILTRO: publicaciones con al menos 1 comentario
-            if comments_cnt >= 1:
-                # Comprobamos si tiene indicios de español
-                cap_lower = f" {caption_text.lower()} "
-                is_spanish = any(marker in cap_lower for marker in spanish_markers)
-
-                posts_data.append({
-                    "url": url,
-                    "caption": caption_text or 'Sin descripción.',
-                    "likesCount": max(likes_cnt, 0),
-                    "commentsCount": comments_cnt,
-                    "ownerUsername": str(owner_user).replace("@", "").strip(),
-                    "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
-                    "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl') or '',
-                    "_is_spanish": 1 if is_spanish else 0
-                })
+            all_posts.append({
+                "url": url,
+                "caption": caption_text or 'Sin descripción.',
+                "likesCount": max(likes_cnt, 0),
+                "commentsCount": max(comments_cnt, 0),
+                "ownerUsername": str(owner_user).replace("@", "").strip(),
+                "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
+                "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl') or '',
+                "_is_spanish": is_spanish
+            })
             
-        # Ordenar primero los que están en español y luego por número de comentarios
-        posts_data.sort(key=lambda p: (p["_is_spanish"], p["commentsCount"], p["likesCount"]), reverse=True)
+        # Filtro prioritario: publicaciones con comentarios reales
+        with_comments = [p for p in all_posts if p["commentsCount"] >= 1]
         
-        # Limpiar la clave auxiliar antes de retornar
-        for p in posts_data:
+        # Si hay suficientes con comentarios, usamos esas; si son pocas, completamos con las de mayor interacción
+        if len(with_comments) >= 4:
+            selected_posts = with_comments
+        else:
+            # Fallback: incluir las publicaciones con más likes del término
+            selected_posts = sorted(all_posts, key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)[:10]
+
+        # Ordenar: primero español, luego volumen de comentarios y likes
+        selected_posts.sort(key=lambda p: (p["_is_spanish"], p["commentsCount"], p["likesCount"]), reverse=True)
+        
+        for p in selected_posts:
             p.pop("_is_spanish", None)
             
-        print(f"Posts encontrados con comentarios: {len(posts_data)}")
-        return posts_data
+        print(f"Total posts entregados al Radar: {len(selected_posts)}")
+        return selected_posts
     except Exception as e:
         print(f"Error en find_instagram_posts_by_hashtag: {e}")
         return [] 
