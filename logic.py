@@ -164,31 +164,44 @@ def analyze_comments_with_ai(comments: list, context: dict):
 
 def find_instagram_posts_by_hashtag(hashtag: str):
     cleaned_hashtag = hashtag.strip().replace("#", "")
-    print(f"Iniciando BÚSQUEDA SIMPLE para #{cleaned_hashtag} con Apify...")
+    print(f"Iniciando BÚSQUEDA de #{cleaned_hashtag} con Apify...")
     try:
-        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 15}
+        # Aumentamos el límite para capturar un abanico real de publicaciones
+        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 30}
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
+        
         posts_data = []
-        for item in apify_client.dataset(actor_run.default_dataset_id).iterate_items():
+        dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
+        
+        for item in apify_client.dataset(dataset_id).iterate_items():
             url = item.get('url')
             if not url:
                 continue
             owner = item.get('owner') or {}
+            owner_user = item.get('ownerUsername') or owner.get('username') or ''
+            
             posts_data.append({
                 "url": url,
                 "caption": item.get('caption') or 'Sin descripción.',
                 "likesCount": max(item.get('likesCount') or 0, 0),
                 "commentsCount": item.get('commentsCount') or 0,
-                "ownerUsername": item.get('ownerUsername') or owner.get('username') or '',
+                "ownerUsername": owner_user.replace("@", "").strip(),
                 "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
                 "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl'),
             })
-        # Solo posts con comentarios, los más comentados primero
-        posts_data = [p for p in posts_data if p["commentsCount"] > 0]
-        posts_data.sort(key=lambda p: p["commentsCount"], reverse=True)
-        return posts_data[:6]
+            
+        # Filtrar posts que tengan comentarios para que el análisis sea útil
+        posts_with_comments = [p for p in posts_data if p["commentsCount"] > 0]
+        
+        # Si pocos tienen comentarios, incluir también los que tengan alta interacción general
+        final_posts = posts_with_comments if len(posts_with_comments) >= 4 else posts_data
+        final_posts.sort(key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)
+        
+        # Devolver hasta 12 publicaciones
+        return final_posts[:12]
     except Exception as e:
-        print(f"Error en prospección simple: {e}"); return None
+        print(f"Error en prospección: {e}")
+        return None
     
 # logic.py - Añadiendo el Generador de Estrategias
 
