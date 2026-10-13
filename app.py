@@ -84,10 +84,10 @@ from sqlalchemy import text
 # Migración automática si la tabla ya existía sin la columna saved_posts
 try:
     with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE outbox_items ADD COLUMN notes TEXT DEFAULT ''"))
         conn.commit()
-        print("Columna saved_posts agregada correctamente a strategies.")
-except Exception as e:
+except Exception:
+    pass
     # Si la columna ya existe en la base de datos, simplemente continúa
     print(f"Info migración saved_posts: {e}")
 
@@ -442,11 +442,18 @@ def fetch_post_details(req: PostDetailsRequest, current_user: User = Depends(get
 
 @app.get("/api/outbox")
 def list_outbox(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    rows = db.query(OutboxItem).filter_by(owner_id=current_user.id, status='pending').order_by(OutboxItem.created_at.desc()).all()
+    # Traemos todos los registros del usuario (tanto pending como en seguimiento)
+    rows = db.query(OutboxItem).filter_by(owner_id=current_user.id).order_by(OutboxItem.created_at.desc()).all()
     return [{
-        "id": r.id, "post_url": r.post_url, "prospect_username": r.prospect_username,
-        "prospect_comment": r.prospect_comment, "selected_opener": r.selected_opener,
-        "identified_pain": r.identified_pain, "score": r.score
+        "id": str(r.id),
+        "post_url": getattr(r, "post_url", None),
+        "prospect_username": r.prospect_username,
+        "prospect_comment": r.prospect_comment,
+        "selected_opener": r.selected_opener,
+        "identified_pain": getattr(r, "identified_pain", None),
+        "score": getattr(r, "score", 8),
+        "status": getattr(r, "status", "pending") or "pending",
+        "notes": getattr(r, "notes", "") or ""
     } for r in rows]
 
 @app.post("/api/outbox")
@@ -566,24 +573,49 @@ def add_to_outbox(
         raise HTTPException(status_code=500, detail=f"Error guardando en Outbox: {str(e)}")
 
 @app.patch("/api/outbox/{item_id}")
+@app.patch("/api/outbox/{item_id}")
 def update_outbox_item(
     item_id: str,
     payload: dict = Body(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    item = db.query(Conversation).filter(Conversation.id == item_id, Conversation.owner_id == current_user.id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Elemento no encontrado")
+    try:
+        item = db.query(OutboxItem).filter(
+            OutboxItem.id == item_id,
+            OutboxItem.owner_id == current_user.id
+        ).first()
+        
+        # Fallback si el ID en base de datos es un entero
+        if not item and item_id.isdigit():
+            item = db.query(OutboxItem).filter(
+                OutboxItem.id == int(item_id),
+                OutboxItem.owner_id == current_user.id
+            ).first()
 
-    if "status" in payload:
-        item.status = payload["status"]
-    if "notes" in payload:
-        item.notes = payload["notes"]
+        if not item:
+            raise HTTPException(status_code=404, detail="Prospecto no encontrado en Outbox")
 
-    db.commit()
-    db.refresh(item)
-    return {"status": "success", "item": {"id": item.id, "status": item.status, "notes": item.notes}}
+        if "status" in payload:
+            item.status = payload["status"]
+        if "notes" in payload:
+            item.notes = payload["notes"]
+
+        db.commit()
+        db.refresh(item)
+        return {
+            "status": "success",
+            "item": {
+                "id": str(item.id),
+                "status": item.status,
+                "notes": getattr(item, "notes", "")
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error actualizando prospecto: {str(e)}")
 @app.get("/api/conversations")
 def list_conversations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.query(Conversation).filter_by(owner_id=current_user.id).order_by(Conversation.created_at.desc()).all()
