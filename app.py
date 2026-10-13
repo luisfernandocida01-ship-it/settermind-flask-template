@@ -77,6 +77,17 @@ def get_db():
         yield db
     finally:
         db.close()
+from sqlalchemy import text
+
+# Migración automática si la tabla ya existía sin la columna saved_posts
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
+        conn.commit()
+        print("Columna saved_posts agregada correctamente a strategies.")
+except Exception as e:
+    # Si la columna ya existe en la base de datos, simplemente continúa
+    print(f"Info migración saved_posts: {e}")
 
 # --- MODELOS PYDANTIC ---
 class UserCreate(BaseModel): username: str; email: str; password: str
@@ -511,12 +522,29 @@ def api_generate_lead_magnet(req: LeadMagnetRequest, current_user: User = Depend
         raise HTTPException(status_code=500, detail="Error al generar el recurso.")
     return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
 
-@app.post("/api/generate-engagement-poll")
-def api_generate_engagement(req: EngagementPollRequest, current_user: User = Depends(get_current_user)):
-    res = generate_engagement_poll_logic(req.question)
-    if not res:
-        raise HTTPException(status_code=500, detail="Error al generar dinámica.")
-    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+@app.post("/api/strategies")
+def create_strategy(
+    strategy_data: StrategyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        new_strategy = Strategy(
+            niche=strategy_data.niche,
+            avatar=strategy_data.avatar,
+            keywords=strategy_data.keywords,
+            hashtags=strategy_data.hashtags,
+            saved_posts=[],
+            owner_id=current_user.id
+        )
+        db.add(new_strategy)
+        db.commit()
+        db.refresh(new_strategy)
+        return {"status": "success", "strategy_id": new_strategy.id}
+    except Exception as e:
+        db.rollback()
+        print(f"Error detallado al guardar estrategia: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al guardar estrategia: {str(e)}")
 
 @app.post("/api/generate-profile-magnet")
 def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = Depends(get_current_user)):
