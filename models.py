@@ -17,7 +17,9 @@ class User(Base):
     
     analyses = relationship('Analysis', back_populates='owner')
     strategies = relationship('Strategy', back_populates='owner')
-    api_keys = relationship('ApiKey', back_populates='owner')
+    outbox_items = relationship("OutboxItem", back_populates="owner", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="owner", cascade="all, delete-orphan")
+    api_keys = relationship('ApiKey', back_populates='owner', cascade="all, delete-orphan")
 
 class ApiKey(Base):
     __tablename__ = 'api_keys'
@@ -77,3 +79,4 @@ class Conversation(Base):
     exported = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    owner = relationship('User', back_populates='conversations')
