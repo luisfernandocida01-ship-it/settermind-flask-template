@@ -166,8 +166,8 @@ def find_instagram_posts_by_hashtag(hashtag: str):
     cleaned_hashtag = hashtag.strip().replace("#", "")
     print(f"Iniciando BÚSQUEDA de #{cleaned_hashtag} con Apify...")
     try:
-        # Aumentamos el límite para capturar un abanico real de publicaciones
-        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 30}
+        # Aumentamos a 40 para encontrar publicaciones con interacción real
+        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 40}
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
         
         posts_data = []
@@ -179,29 +179,28 @@ def find_instagram_posts_by_hashtag(hashtag: str):
                 continue
             owner = item.get('owner') or {}
             owner_user = item.get('ownerUsername') or owner.get('username') or ''
+            comments_cnt = item.get('commentsCount') or 0
             
-            posts_data.append({
-                "url": url,
-                "caption": item.get('caption') or 'Sin descripción.',
-                "likesCount": max(item.get('likesCount') or 0, 0),
-                "commentsCount": item.get('commentsCount') or 0,
-                "ownerUsername": owner_user.replace("@", "").strip(),
-                "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
-                "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl'),
-            })
+            # FILTRO ESTRICTO: Solo posts con al menos 1 comentario para garantizar que haya prospectos
+            if comments_cnt >= 1:
+                posts_data.append({
+                    "url": url,
+                    "caption": item.get('caption') or 'Sin descripción.',
+                    "likesCount": max(item.get('likesCount') or 0, 0),
+                    "commentsCount": comments_cnt,
+                    "ownerUsername": owner_user.replace("@", "").strip(),
+                    "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
+                    "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl'),
+                })
             
-        # Filtrar posts que tengan comentarios para que el análisis sea útil
-        posts_with_comments = [p for p in posts_data if p["commentsCount"] > 0]
+        # Ordenar por los más comentados primero
+        posts_data.sort(key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)
         
-        # Si pocos tienen comentarios, incluir también los que tengan alta interacción general
-        final_posts = posts_with_comments if len(posts_with_comments) >= 4 else posts_data
-        final_posts.sort(key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)
-        
-        # Devolver hasta 12 publicaciones
-        return final_posts[:12]
+        print(f"Posts encontrados con comentarios reales: {len(posts_data)}")
+        return posts_data[:12]
     except Exception as e:
         print(f"Error en prospección: {e}")
-        return None
+        return None 
     
 # logic.py - Añadiendo el Generador de Estrategias
 

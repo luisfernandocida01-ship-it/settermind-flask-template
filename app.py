@@ -85,6 +85,11 @@ class OutboxCreate(BaseModel):
     selected_opener: str
     identified_pain: str = ''
     score: str | int | float = ''
+class StrategyCreate(BaseModel):
+    niche: str
+    avatar: str
+    keywords: list[str] = []
+    hashtags: list[str] = []
 class ConversationCreate(BaseModel): lead_data: dict[str, Any]
 class ConversationUpdate(BaseModel):
     notes: Optional[str] = None
@@ -478,6 +483,28 @@ def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = 
         return data
     except Exception:
         return {"bio": str(res), "cta": "Envía un mensaje privado para más detalles."}
+
+@app.post("/api/strategies")
+def create_strategy(
+    strategy_data: StrategyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        new_strategy = Strategy(
+            niche=strategy_data.niche,
+            avatar=strategy_data.avatar,
+            keywords=strategy_data.keywords,
+            hashtags=strategy_data.hashtags,
+            owner_id=current_user.id
+        )
+        db.add(new_strategy)
+        db.commit()
+        db.refresh(new_strategy)
+        return {"status": "success", "strategy_id": new_strategy.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al guardar estrategia: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
