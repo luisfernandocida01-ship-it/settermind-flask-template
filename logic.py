@@ -182,41 +182,65 @@ def find_instagram_posts_by_hashtag(hashtag: str):
     cleaned_hashtag = hashtag.strip().replace("#", "")
     print(f"Iniciando BÚSQUEDA de #{cleaned_hashtag} con Apify...")
     try:
-        # Aumentamos a 40 para encontrar publicaciones con interacción real
-        run_input = {"hashtags": [cleaned_hashtag], "resultsLimit": 40}
+        # Forzar 'top' para obtener publicaciones destacadas con interacción y comentarios activos
+        run_input = {
+            "hashtags": [cleaned_hashtag],
+            "resultsType": "top",  # <-- Prioriza publicaciones populares con comentarios reales
+            "resultsLimit": 50
+        }
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
         
         posts_data = []
         dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
         
         for item in apify_client.dataset(dataset_id).iterate_items():
-            url = item.get('url')
+            url = item.get('url') or item.get('postUrl')
             if not url:
                 continue
-            owner = item.get('owner') or {}
-            owner_user = item.get('ownerUsername') or owner.get('username') or ''
-            comments_cnt = item.get('commentsCount') or 0
+                
+            owner = item.get('owner') if isinstance(item.get('owner'), dict) else {}
+            owner_user = (
+                item.get('ownerUsername')
+                or owner.get('username')
+                or item.get('username')
+                or ''
+            )
             
-            # FILTRO ESTRICTO: Solo posts con al menos 1 comentario para garantizar que haya prospectos
+            # Conteo de comentarios resiliente
+            comments_cnt = (
+                item.get('commentsCount')
+                or item.get('comments_count')
+                or (item.get('edge_media_to_comment') or {}).get('count')
+                or 0
+            )
+            
+            likes_cnt = (
+                item.get('likesCount')
+                or item.get('likes_count')
+                or (item.get('edge_liked_by') or {}).get('count')
+                or 0
+            )
+            
+            # Aceptar publicaciones que tengan interacción real
             if comments_cnt >= 1:
                 posts_data.append({
                     "url": url,
-                    "caption": item.get('caption') or 'Sin descripción.',
-                    "likesCount": max(item.get('likesCount') or 0, 0),
+                    "caption": item.get('caption') or item.get('text') or 'Sin descripción.',
+                    "likesCount": max(likes_cnt, 0),
                     "commentsCount": comments_cnt,
-                    "ownerUsername": owner_user.replace("@", "").strip(),
+                    "ownerUsername": str(owner_user).replace("@", "").strip(),
                     "ownerFullName": item.get('ownerFullName') or owner.get('fullName') or '',
-                    "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl'),
+                    "ownerProfilePicUrl": item.get('ownerProfilePicUrl') or owner.get('profilePicUrl') or '',
                 })
             
-        # Ordenar por los más comentados primero
+        # Si por alguna razón los 'top' fueron pocos, relajar temporalmente el umbral
         posts_data.sort(key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)
         
         print(f"Posts encontrados con comentarios reales: {len(posts_data)}")
-        return posts_data[:12]
+        return posts_data
     except Exception as e:
-        print(f"Error en prospección: {e}")
-        return None 
+        print(f"Error en find_instagram_posts_by_hashtag: {e}")
+        return [] 
     
 # logic.py - Añadiendo el Generador de Estrategias
 
