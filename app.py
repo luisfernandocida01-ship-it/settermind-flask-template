@@ -369,11 +369,23 @@ def get_user_strategies(current_user: User = Depends(get_current_user), db: Sess
 @app.post("/api/generate-strategy")
 def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     context = {"niche": req.niche, "avatar": req.avatar}
-    strategy_json_string = generate_prospecting_strategy(context)
-    if not strategy_json_string:
-        raise HTTPException(status_code=500, detail="Generación de estrategia falló.")
+    strategy_result = generate_prospecting_strategy(context)
+    
+    if not strategy_result:
+        raise HTTPException(status_code=500, detail="Generación de estrategia falló en OpenAI.")
+    
+    # Manejar si devuelve un dict o si devuelve un string JSON
+    if isinstance(strategy_result, dict):
+        strategy_data = strategy_result
+    elif isinstance(strategy_result, str):
+        try:
+            strategy_data = json.loads(strategy_result)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Respuesta no es JSON válido.")
+    else:
+        raise HTTPException(status_code=500, detail="Formato de respuesta desconocido.")
+
     try:
-        strategy_data = json.loads(strategy_json_string)
         new_strategy = Strategy(
             niche=req.niche,
             avatar=req.avatar,
@@ -383,9 +395,16 @@ def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), curre
         )
         db.add(new_strategy)
         db.commit()
+        db.refresh(new_strategy)
+        
+        # Adjuntamos el ID de la estrategia para poder guardar posts en ella luego
+        strategy_data['strategy_id'] = new_strategy.id
         return strategy_data
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Respuesta no es JSON válido.")
+    except Exception as e:
+        db.rollback()
+        print(f"Error al persistir estrategia en BD: {e}")
+        # Retornamos los datos generados aunque falle el guardado en base de datos
+        return strategy_data
 
 @app.post("/api/get-post-details")
 def fetch_post_details(req: PostDetailsRequest, current_user: User = Depends(get_current_user)):
