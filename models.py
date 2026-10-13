@@ -47,9 +47,10 @@ class Strategy(Base):
     avatar = Column(String, nullable=False)
     keywords = Column(JSON, nullable=False)
     hashtags = Column(JSON, nullable=False)
+    saved_posts = Column(JSON, default=list)  # <-- Almacén de posts calificados
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    owner = relationship('User', back_populates='strategies')    
+    owner = relationship('User', back_populates='strategies')
 
 class OutboxItem(Base):
     __tablename__ = 'outbox_items'

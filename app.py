@@ -351,8 +351,20 @@ def get_analysis_history(db: Session = Depends(get_db), current_user: User = Dep
     ]}
 
 @app.get("/api/strategies")
-def get_strategies(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
+def get_user_strategies(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    strats = db.query(Strategy).filter(Strategy.owner_id == current_user.id).order_by(Strategy.created_at.desc()).all()
+    results = []
+    for s in strats:
+        results.append({
+            "id": s.id,
+            "niche": s.niche,
+            "avatar": s.avatar,
+            "keywords": s.keywords or [],
+            "hashtags": s.hashtags or [],
+            "saved_posts": s.saved_posts or [],
+            "created_at": s.created_at.isoformat() if s.created_at else None
+        })
+    return {"strategies": results}
 
 @app.post("/api/generate-strategy")
 def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -505,6 +517,34 @@ def create_strategy(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al guardar estrategia: {str(e)}")
+
+class AddPostToStrategy(BaseModel):
+    url: str
+    caption: str = ''
+    likesCount: int = 0
+    commentsCount: int = 0
+    ownerUsername: str = ''
+
+@app.post("/api/strategies/{strategy_id}/posts")
+def add_post_to_strategy(
+    strategy_id: str,
+    post_item: AddPostToStrategy,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    strat = db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.owner_id == current_user.id).first()
+    if not strat:
+        raise HTTPException(status_code=404, detail="Estrategia no encontrada")
+
+    current_posts = list(strat.saved_posts or [])
+    # Evitar duplicados por URL
+    if not any(p.get("url") == post_item.url for p in current_posts):
+        current_posts.append(post_item.dict())
+        strat.saved_posts = current_posts
+        db.commit()
+        db.refresh(strat)
+
+    return {"status": "success", "saved_posts": strat.saved_posts}
 
 if __name__ == "__main__":
     import uvicorn
