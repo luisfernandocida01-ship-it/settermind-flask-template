@@ -61,6 +61,16 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
+# Migracion forzosa de la columna saved_posts para SQLite
+try:
+    from sqlalchemy import text
+    with engine.connect() as _conn:
+        _conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
+        _conn.commit()
+        print("MIGRACION EXITOSA: Columna saved_posts agregada.")
+except Exception as _err:
+    print(f"Migracion omitida o columna ya existente: {_err}")
+
 # Migración automática de esquema para SQLite / Postgres
 try:
     with engine.connect() as conn:
