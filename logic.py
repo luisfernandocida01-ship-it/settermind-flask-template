@@ -200,7 +200,8 @@ def find_instagram_posts_by_hashtag(hashtag: str):
         all_posts = []
         dataset_id = getattr(actor_run, "default_dataset_id", None) or actor_run.get("defaultDatasetId") or actor_run.get("default_dataset_id")
         
-        spanish_markers = {" el ", " la ", " de ", " en ", " y ", " que ", " para ", " con ", " por ", " tu ", " tus ", " los ", " las "}
+        spanish_markers = {" el ", " la ", " y ", " que ", " para ", " con ", " por ", " tu ", " tus ", " los ", " las ", " es ", " más ", " este ", " esta ", " ventas ", " cómo "}
+        portuguese_markers = {" não ", " você ", " seus ", " sua ", " suas ", " com ", " negócio ", " negócios ", " gestão ", " muito ", " também ", " foi ", " são ", " estão ", " maior ", " evento ", " história "}
         
         for item in apify_client.dataset(dataset_id).iterate_items():
             url = item.get('url') or item.get('postUrl')
@@ -231,7 +232,9 @@ def find_instagram_posts_by_hashtag(hashtag: str):
             
             caption_text = item.get('caption') or item.get('text') or ''
             cap_lower = f" {caption_text.lower()} "
-            is_spanish = 1 if any(m in cap_lower for m in spanish_markers) else 0
+            has_es = sum(1 for m in spanish_markers if m in cap_lower)
+            has_pt = sum(1 for m in portuguese_markers if m in cap_lower)
+            is_spanish = 1 if (has_es >= 2 and has_pt == 0) or (has_es > has_pt) else 0
             
             all_posts.append({
                 "url": url,
