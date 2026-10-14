@@ -424,6 +424,7 @@ def generate_strategy(req: StrategyRequest, db: Session = Depends(get_db), curre
         
         # Adjuntamos el ID de la estrategia para poder guardar posts en ella luego
         strategy_data['strategy_id'] = new_strategy.id
+        strategy_data['id'] = new_strategy.id
         return strategy_data
     except Exception as e:
         db.rollback()
