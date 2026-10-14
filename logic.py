@@ -192,7 +192,7 @@ def find_instagram_posts_by_hashtag(hashtag: str):
     try:
         run_input = {
             "hashtags": [cleaned_hashtag],
-            "resultsType": "top",
+            "resultsType": "posts",       # <-- Cambiar "top" por "posts"
             "resultsLimit": 70
         }
         actor_run = apify_client.actor("apify/instagram-hashtag-scraper").call(run_input=run_input)
