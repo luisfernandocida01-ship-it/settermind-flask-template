@@ -693,6 +693,8 @@ class AddPostToStrategy(BaseModel):
     commentsCount: int = 0
     ownerUsername: str = ''
 
+from sqlalchemy.orm.attributes import flag_modified
+
 @app.post("/api/strategies/{strategy_id}/posts")
 def add_post_to_strategy(
     strategy_id: str,
@@ -704,15 +706,23 @@ def add_post_to_strategy(
     if not strat:
         raise HTTPException(status_code=404, detail="Estrategia no encontrada")
 
-    current_posts = list(strat.saved_posts or [])
-    # Evitar duplicados por URL
-    if not any(p.get("url") == post_item.url for p in current_posts):
-        current_posts.append(post_item.dict())
-        strat.saved_posts = current_posts
-        db.commit()
-        db.refresh(strat)
+    try:
+        current_posts = list(strat.saved_posts or [])
+        item_dict = post_item.model_dump() if hasattr(post_item, "model_dump") else post_item.dict()
+        
+        # Evitar duplicados por URL
+        if not any(isinstance(p, dict) and p.get("url") == post_item.url for p in current_posts):
+            current_posts.append(item_dict)
+            strat.saved_posts = current_posts
+            flag_modified(strat, "saved_posts")
+            db.commit()
+            db.refresh(strat)
 
-    return {"status": "success", "saved_posts": strat.saved_posts}
+        return {"status": "success", "saved_posts": strat.saved_posts or []}
+    except Exception as e:
+        db.rollback()
+        print(f"Error al guardar post en estrategia: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al guardar post: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
