@@ -326,7 +326,29 @@ def prospect_posts(req: ProspectRequest, current_user: User = Depends(get_curren
     posts = find_instagram_posts_by_hashtag(req.hashtag)
     if posts is None:
         raise HTTPException(status_code=500, detail="La búsqueda de prospectos falló.")
-    return {"found_posts": posts}
+
+    seen_urls = set()
+    user_counts = {}
+    filtered_posts = []
+
+    for p in posts:
+        if not isinstance(p, dict):
+            continue
+
+        raw_url = p.get("url") or ""
+        clean_url = raw_url.split("?")[0].rstrip("/")
+        if not clean_url or clean_url in seen_urls:
+            continue
+
+        username = (p.get("ownerUsername") or "desconocido").lower()
+        if user_counts.get(username, 0) >= 3:
+            continue
+
+        seen_urls.add(clean_url)
+        user_counts[username] = user_counts.get(username, 0) + 1
+        filtered_posts.append(p)
+
+    return {"found_posts": filtered_posts}
 
 @app.post("/api/analyze-post")
 def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
