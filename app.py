@@ -108,7 +108,7 @@ try:
 except Exception:
     pass
     # Si la columna ya existe en la base de datos, simplemente continúa
-    print(f"Info migración saved_posts: {e}")
+    # print migración
 
 # --- MODELOS PYDANTIC ---
 class UserCreate(BaseModel): username: str; email: str; password: str
