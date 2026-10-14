@@ -244,15 +244,12 @@ def find_instagram_posts_by_hashtag(hashtag: str):
                 "_is_spanish": is_spanish
             })
             
-        # Filtro prioritario: publicaciones con comentarios reales
-        with_comments = [p for p in all_posts if p["commentsCount"] >= 1]
-        
-        # Si hay suficientes con comentarios, usamos esas; si son pocas, completamos con las de mayor interacción
-        if len(with_comments) >= 4:
-            selected_posts = with_comments
-        else:
-            # Fallback: incluir las publicaciones con más likes del término
-            selected_posts = sorted(all_posts, key=lambda p: (p["commentsCount"], p["likesCount"]), reverse=True)[:10]
+        # Filtro estricto: solo publicaciones que tengan al menos 1 comentario
+        selected_posts = [p for p in all_posts if p.get("commentsCount", 0) >= 1]
+
+        if not selected_posts:
+            print("Ninguna publicación encontrada tiene comentarios para prospectar.")
+            return []
 
         # Ordenar: primero español, luego volumen de comentarios y likes
         selected_posts.sort(key=lambda p: (p["_is_spanish"], p["commentsCount"], p["likesCount"]), reverse=True)
