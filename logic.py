@@ -89,83 +89,60 @@ def scrape_instagram_comments(url: str):
 
 def analyze_profile_with_ai(biography: str):
     """
-    Usa OpenAI para analizar la biografía de un perfil de Instagram y deducir su nicho y avatar.
+    Usa OpenAI para analizar la biografía/caption y deducir nicho, avatar (profesion/objetivos) y puntos de dolor.
     """
     if not biography or not biography.strip():
-        print("Biografía vacía, saltando análisis de perfil.")
-        return {"niche": "No se pudo determinar (sin biografía).", "avatar": "No se pudo determinar (sin biografía)."}
+        return {
+            "niche": "No especificado",
+            "avatar": "Audiencia interesada",
+            "profesion": "Emprendedor / Profesional independiente",
+            "objetivos": ["Aprender nuevas habilidades y mejorar resultados", "Optimizar procesos actuales"],
+            "puntos_de_dolor": ["Falta de tiempo y herramientas automatizadas", "Dificultad para convertir prospectos"]
+        }
 
-    print("Iniciando análisis de perfil con OpenAI...")
-    
+    print("Iniciando análisis enriquecido de perfil con OpenAI...")
     prompt = f"""
-        **IDENTIDAD:** Eres 'BrandStrategist AI', un experto en branding y marketing digital. Tu especialidad es analizar perfiles de redes sociales para entender su posicionamiento de mercado.
-
-        **TAREA:** Analiza la siguiente BIOGRAFÍA de un perfil de Instagram. Basándote en el texto, deduce el nicho principal del perfil y describe a su cliente ideal (avatar).
-
-        **BIOGRAFÍA PARA ANALIZAR:**
-        "{biography}"
-
-        **FORMATO DE SALIDA (Obligatorio - JSON):**
-        Devuelve un objeto JSON con dos claves: "niche" y "avatar".
-        - "niche": Una frase corta que resuma el nicho del perfil.
-        - "avatar": Una descripción breve del tipo de persona a la que este perfil le está hablando.
-    """
-    
-    try:
-        cleaned_response = generate_ai_json(prompt)
-        print("Análisis de perfil completado.")
-        return json.loads(cleaned_response)
-    except Exception as e:
-        print(f"Error con API de OpenAI al analizar perfil: {e}")
-        return {"niche": "Error en el análisis.", "avatar": "Error en el análisis."}
-
-def analyze_comments_with_ai(comments: list, context: dict):
-    print("Iniciando análisis de CONGRUENCIA con OpenAI...")
-    
-    # Formatear el bloque preservando el autor del comentario
-    comments_lines = []
-    for c in comments:
-        if isinstance(c, dict):
-            comments_lines.append(f"[@{c.get('username', 'usuario')}]: {c.get('text', '')}")
-        else:
-            comments_lines.append(f"- {c}")
-    comments_text_block = "\n".join(comments_lines)
-    
-    prompt = f"""
-        **IDENTIDAD:** Eres 'SetterMind AI', un experto en análisis de prospectos y congruencia de mercado.
+        **IDENTIDAD:** Eres SetterMind AI, estratega de prospección y cualificación comercial de alto impacto.
 
         **TAREA PRINCIPAL:**
-        Te proporcionaré el CONTEXTO DE UN PRODUCTO (lo que quiero vender) y el CONTEXTO DE UN POST (donde encontré a los prospectos). Tu misión es analizar una lista de COMENTARIOS de ese post y, para cada uno, determinar si es un buen prospecto para el producto.
+        Te proporciono el CONTEXTO DEL PRODUCTO que vendo y el CONTEXTO DEL POST donde encontré a los prospectos. Analiza la lista de COMENTARIOS para identificar prospectos de alta intención y generar para cada uno 3 Openers de conversación.
 
         **CONTEXTO DEL PRODUCTO (Lo que yo vendo):**
-        *   **Nicho/Producto:** {context.get('niche', 'No especificado')}
-        *   **Cliente Ideal (Avatar):** {context.get('avatar', 'No especificado')}
+        * Nicho/Producto: {context.get('niche', 'No especificado')}
+        * Cliente Ideal (Avatar): {context.get('avatar', 'No especificado')}
 
         **CONTEXTO DEL POST (Donde están los comentarios):**
-        *   **Descripción del Post (Caption):** {context.get('caption', 'No especificada')}
+        * Descripción del Post (Caption): {context.get('caption', 'No especificada')}
 
         **COMENTARIOS PARA ANALIZAR:**
         {comments_text_block}
-        
-        **INSTRUCCIONES DE ANÁLISIS:**
-        1.  **FILTRA:** Ignora comentarios inútiles (spam, emojis solos, texto de la interfaz).
-        2.  **IDENTIFICA:** Selecciona un máximo de 5-7 comentarios que sean prospectos REALES.
-        3.  **ANALIZA CADA PROSPECTO:** Para cada uno, proporciona la siguiente información:
-            *   **username:** El usuario exacto de Instagram que hizo el comentario (sin el @).
-            *   **comment_text:** El texto original del comentario.
-            *   **pain_point_identified:** Describe el dolor o necesidad del prospecto. Considera si su dolor es congruente con la solución que ofrece MI PRODUCTO.
-            *   **potential_score:** Una puntuación de 1 a 10, donde 10 es un prospecto perfecto y altamente congruente.
-            *   **suggested_openers:** Genera 3 openers que conecten su dolor con la solución de MI PRODUCTO.
 
-        **FORMATO DE SALIDA (JSON Obligatorio):**
+        **INSTRUCCIONES Y REGLAS DE ORO:**
+        1. ATENCIÓN A LLAMADOS A LA ACCIÓN: Si el post pidió comentar una palabra clave (ejemplo: 'VUELO', 'INFO', 'GUIA', 'PROMPTS', 'PRECIO' o emojis), los comentarios con esa palabra SON PROSPECTOS CALIENTES (Hot Leads) con alta intención. NO LOS DESCARTES ni los consideres spam.
+        2. Selecciona entre 5 y 10 prospectos con mayor potencial.
+        3. Para cada uno, genera 3 suggested_openers naturales, directos, respetuosos y profesionales que conecten la necesidad mostrada en el post con el valor de mi solución.
+
+        **FORMATO DE SALIDA (JSON Únicamente):**
         {{
           "leads": [
             {{
-              "username": "usuario_real",
-              "comment_text": "texto del comentario",
-              "pain_point_identified": "explicación del dolor",
-              "potential_score": 8,
-              "suggested_openers": ["opener 1", "opener 2", "opener 3"]
+              "username": "usuario_sin_arroba",
+              "comment_text": "texto exacto del comentario",
+              "comment": "texto exacto del comentario",
+              "pain_point_identified": "Dolor, necesidad o interés comercial identificado",
+              "intent": "Interés explícito manifestado",
+              "potential_score": 9,
+              "confidence": 90,
+              "suggested_openers": [
+                "Opener 1: Saludo empático conectando con lo que comentó",
+                "Opener 2: Pregunta estratégica sobre su desafío actual",
+                "Opener 3: Enfoque directo ofreciendo la solución"
+              ],
+              "openers": [
+                "Opener 1: Saludo empático conectando con lo que comentó",
+                "Opener 2: Pregunta estratégica sobre su desafío actual",
+                "Opener 3: Enfoque directo ofreciendo la solución"
+              ]
             }}
           ]
         }}
