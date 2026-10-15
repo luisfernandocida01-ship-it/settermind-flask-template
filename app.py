@@ -368,12 +368,15 @@ def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_use
         "caption": post_caption
     }
 
-    ai_analysis_json_string = analyze_comments_with_ai(comments, context)
-    if not ai_analysis_json_string:
+    raw_ai_analysis = analyze_comments_with_ai(comments, context)
+    if not raw_ai_analysis:
         raise HTTPException(status_code=500, detail="Análisis de IA falló.")
 
     try:
-        ai_results = json.loads(ai_analysis_json_string)
+        if isinstance(raw_ai_analysis, dict):
+            ai_results = raw_ai_analysis
+        else:
+            ai_results = json.loads(raw_ai_analysis)
         ai_results['summary'] = f"Analizados {len(comments)} com., IA identificó {len(ai_results.get('leads', []))} prospectos."
         
         new_analysis = Analysis(
