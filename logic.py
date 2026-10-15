@@ -145,35 +145,36 @@ def analyze_profile_with_ai(biography: str):
         }
 
 def analyze_comments_with_ai(comments: list, context: dict):
-    print("Iniciando análisis de CONGRUENCIA con OpenAI...")
+    print("Iniciando análisis de CONGRUENCIA con OpenAI (Fórmula Gancho + Dolor + CTA)...")
     comments_lines = []
     for c in comments:
         if isinstance(c, dict):
             comments_lines.append(f"[@{c.get('username', 'usuario')}]: {c.get('text', '')}")
         else:
             comments_lines.append(f"- {c}")
-    comments_text_block = "\n".join(comments_lines)
+    comments_text_block = "
+".join(comments_lines)
 
     prompt = f"""
-        **IDENTIDAD:** Eres SetterMind AI, estratega de prospección y cualificación comercial de alto impacto.
+        **IDENTIDAD:** Eres SetterMind AI, estratega de prospección y cualificación comercial por mensaje directo (DM).
 
-        **TAREA PRINCIPAL:**
-        Te proporciono el CONTEXTO DEL PRODUCTO que vendo y el CONTEXTO DEL POST donde encontré a los prospectos. Analiza la lista de COMENTARIOS para identificar prospectos de alta intención y generar para cada uno 3 Openers de conversación.
-
-        **CONTEXTO DEL PRODUCTO (Lo que yo vendo):**
+        **CONTEXTO DEL PRODUCTO:**
         * Nicho/Producto: {context.get('niche', 'No especificado')}
         * Cliente Ideal (Avatar): {context.get('avatar', 'No especificado')}
 
-        **CONTEXTO DEL POST (Donde están los comentarios):**
+        **CONTEXTO DEL POST:**
         * Descripción del Post (Caption): {context.get('caption', 'No especificada')}
 
-        **COMENTARIOS PARA ANALIZAR:**
+        **COMENTARIOS A ANALIZAR:**
         {comments_text_block}
 
-        **INSTRUCCIONES Y REGLAS DE ORO:**
-        1. ATENCIÓN A LLAMADOS A LA ACCIÓN: Si el autor del post pidió comentar una palabra clave (ejemplo: 'VUELO', 'INFO', 'GUIA', 'PROMPTS', 'PRECIO' o emojis solicitados), los comentarios con esa palabra SON PROSPECTOS CALIENTES (Hot Leads) con alta intención comercial. NO LOS DESCARTES ni los consideres spam.
-        2. Selecciona entre 5 y 10 prospectos con mayor potencial de respuesta.
-        3. Para cada prospecto genera 3 Openers que conecten lo que comentó con la solución que ofrezco, manteniendo un tono natural, empático y profesional (sin sonar a robot ni a spam agresivo).
+        **INSTRUCCIONES ESTRATÉGICAS DE GENERACIÓN DE OPENERS:**
+        1. Para cada prospecto seleccionado, identifica su **Dolor o Necesidad específica** deducida de lo que escribió en su comentario.
+        2. Asigna un **potential_score** entre 1 y 10 según su nivel de afinidad con la oferta y urgencia de compra.
+        3. Genera 3 Openers de alto impacto siguiendo estrictamente la fórmula de 3 pasos:
+           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{usuario}!", "Qué tal @{usuario}..."), haciendo referencia directa a su comentario para validar su perspectiva.
+           - **CONTENIDO / VALOR:** Aborda el dolor detectado con empatía o una observación de valor que enlace lo que comentó con el contexto del producto.
+           - **CTA CONVERSACIONAL:** Cierra SIEMPRE con una pregunta abierta y genuina que invite a dialogar (sin vender de golpe ni sonar a plantilla publicitaria).
 
         **FORMATO DE SALIDA (JSON Únicamente):**
         {{
@@ -183,18 +184,18 @@ def analyze_comments_with_ai(comments: list, context: dict):
               "comment_text": "texto exacto del comentario",
               "comment": "texto exacto del comentario",
               "pain_point_identified": "Dolor o necesidad comercial identificada",
-              "intent": "Interés explícito manifestado",
+              "intent": "Interés comercial detectado",
               "potential_score": 9,
               "confidence": 90,
               "suggested_openers": [
-                "Opener 1: Saludo empático conectando con su comentario",
-                "Opener 2: Pregunta estratégica sobre su desafío actual",
-                "Opener 3: Enfoque directo ofreciendo la solución"
+                "Opener 1: Hola @usuario, vi tu comentario sobre... [Contenido conectado al dolor]. ¿Cómo estás abordando actualmente...?",
+                "Opener 2: Saludo personalizado con enfoque en experiencia + pregunta abierta",
+                "Opener 3: Saludo personalizado con enfoque directo a la solución + pregunta abierta"
               ],
               "openers": [
-                "Opener 1: Saludo empático conectando con su comentario",
-                "Opener 2: Pregunta estratégica sobre su desafío actual",
-                "Opener 3: Enfoque directo ofreciendo la solución"
+                "Opener 1: Saludo personalizado...",
+                "Opener 2: Saludo personalizado...",
+                "Opener 3: Saludo personalizado..."
               ]
             }}
           ]
@@ -205,13 +206,11 @@ def analyze_comments_with_ai(comments: list, context: dict):
         if isinstance(res, str):
             import json
             res = json.loads(res)
-        print("Análisis de congruencia y comentarios completado.")
+        print("Análisis y openers generados con éxito.")
         return res
     except Exception as e:
         print(f"Error en analyze_comments_with_ai: {e}")
         return {"leads": []}
-
-
 def clean_tag(text: str) -> str:
     """Elimina acentos, tildes y símbolos para maximizar compatibilidad con Instagram/Apify"""
     nfkd = unicodedata.normalize('NFKD', text)
