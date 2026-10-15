@@ -173,6 +173,7 @@ def analyze_comments_with_ai(comments: list, context: dict):
         3. Para cada prospecto redacta 3 Openers con esta fórmula exacta:
            - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @nombre_usuario!"), haciendo mención a lo que escribió.
            - **CONTENIDO / VALOR:** Conecta con empatía sobre el dolor o dilema que planteó en su comentario.
+                      - **REGLA DE FORMATO:** NO incluyas etiquetas ni prefijos como "Opener 1:", "Opener 2:", "Paso 1:". Devuelve únicamente el texto directo listo para enviar o comentar.
            - **CTA CONECTADO A TU PRODUCTO/OFERTA:** Cierra OBLIGATORIAMENTE con una pregunta conversacional orientada al **Contexto del Producto / Solución que ofrezco** ({context.get('niche', 'mi oferta')} / {context.get('avatar', 'mi cliente ideal')}), sondeando sutilmente su apertura para explorar dicha solución.
 
         **FORMATO DE SALIDA (JSON Únicamente):**
@@ -187,14 +188,14 @@ def analyze_comments_with_ai(comments: list, context: dict):
               "potential_score": 9,
               "confidence": 90,
               "suggested_openers": [
-                "Opener 1: Saludo personalizado conectando con dolor y pregunta final",
-                "Opener 2: Saludo personalizado con enfoque en experiencia y pregunta abierta",
-                "Opener 3: Saludo personalizado directo al grano y pregunta abierta"
+                "Hola @nombre_usuario! Saludo empático conectando con dolor y pregunta final",
+                "Qué tal @nombre_usuario! Perspectiva con dolor y pregunta abierta",
+                "Hola @nombre_usuario! Directo al grano sobre el dolor y pregunta abierta"
               ],
               "openers": [
-                "Opener 1: Saludo personalizado conectando con dolor y pregunta final",
-                "Opener 2: Saludo personalizado con enfoque en experiencia y pregunta abierta",
-                "Opener 3: Saludo personalizado directo al grano y pregunta abierta"
+                "Hola @nombre_usuario! Saludo empático conectando con dolor y pregunta final",
+                "Qué tal @nombre_usuario! Perspectiva con dolor y pregunta abierta",
+                "Hola @nombre_usuario! Directo al grano sobre el dolor y pregunta abierta"
               ]
             }}
           ]
