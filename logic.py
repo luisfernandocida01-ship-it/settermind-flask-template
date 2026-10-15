@@ -171,7 +171,7 @@ def analyze_comments_with_ai(comments: list, context: dict):
         1. Para cada prospecto, extrae el **Dolor / Necesidad comercial principal** basado en su comentario o en su intención manifestada.
         2. Determina un **potential_score** numérico de 1 a 10 (donde 10 es máxima intención de compra / afinidad).
         3. Para cada prospecto redacta 3 Openers con esta fórmula exacta:
-           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{{usuario}}!"), haciendo mención a lo que escribió.
+           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @nombre_usuario!"), haciendo mención a lo que escribió.
            - **CONTENIDO / VALOR:** Conecta con empatía sobre el dolor o dilema que planteó en su comentario.
            - **CTA CONECTADO A TU PRODUCTO/OFERTA:** Cierra OBLIGATORIAMENTE con una pregunta conversacional orientada al **Contexto del Producto / Solución que ofrezco** ({context.get('niche', 'mi oferta')} / {context.get('avatar', 'mi cliente ideal')}), sondeando sutilmente su apertura para explorar dicha solución.
 
