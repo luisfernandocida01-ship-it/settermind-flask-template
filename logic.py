@@ -89,18 +89,70 @@ def scrape_instagram_comments(url: str):
 
 def analyze_profile_with_ai(biography: str):
     """
-    Usa OpenAI para analizar la biografía/caption y deducir nicho, avatar (profesion/objetivos) y puntos de dolor.
+    Usa OpenAI para analizar el perfil/caption y deducir nicho, avatar (profesion/objetivos) y puntos de dolor.
     """
     if not biography or not biography.strip():
         return {
             "niche": "No especificado",
-            "avatar": "Audiencia interesada",
-            "profesion": "Emprendedor / Profesional independiente",
-            "objetivos": ["Aprender nuevas habilidades y mejorar resultados", "Optimizar procesos actuales"],
-            "puntos_de_dolor": ["Falta de tiempo y herramientas automatizadas", "Dificultad para convertir prospectos"]
+            "avatar": "Audiencia general interesada",
+            "profesion": "Emprendedor / Usuario interesado",
+            "objetivos": ["Aprender nuevas habilidades", "Optimizar procesos actuales"],
+            "puntos_de_dolor": ["Falta de tiempo y herramientas automáticas", "Dificultad para convertir prospectos"]
         }
 
     print("Iniciando análisis enriquecido de perfil con OpenAI...")
+    prompt = f"""
+        **IDENTIDAD:** Eres SetterMind AI, experto en análisis de audiencias, avatares y prospección estratégica.
+
+        **TAREA:** Analiza la siguiente información de perfil o publicación de Instagram y extrae el perfil estratégico de la audiencia.
+
+        **TEXTO A ANALIZAR:**
+        "{biography}"
+
+        **FORMATO DE SALIDA (JSON Únicamente):**
+        {{
+            "niche": "Resumen claro del nicho de mercado",
+            "avatar": "Perfil del cliente ideal o seguidor objetivo",
+            "profesion": "Profesión o rol principal del cliente ideal",
+            "objetivos": [
+                "Objetivo principal que busca alcanzar",
+                "Objetivo de crecimiento o aprendizaje",
+                "Objetivo de reconocimiento o facturación"
+            ],
+            "puntos_de_dolor": [
+                "Punto de dolor o frustración frecuente",
+                "Obstáculo recurrente en su proceso actual",
+                "Dificultad en conversión o alcance comercial"
+            ]
+        }}
+    """
+    try:
+        res = generate_ai_json(prompt)
+        if isinstance(res, str):
+            import json
+            res = json.loads(res)
+        print("Análisis de perfil completado con éxito.")
+        return res
+    except Exception as e:
+        print(f"Error analizando perfil con IA: {e}")
+        return {
+            "niche": "Negocios y crecimiento digital",
+            "avatar": "Profesionales y emprendedores",
+            "profesion": "Profesional independiente",
+            "objetivos": ["Aumentar clientes y ventas", "Incorporar nuevas habilidades prácticas"],
+            "puntos_de_dolor": ["Procesos comerciales lentos", "Dificultad para cerrar prospectos"]
+        }
+
+def analyze_comments_with_ai(comments: list, context: dict):
+    print("Iniciando análisis de CONGRUENCIA con OpenAI...")
+    comments_lines = []
+    for c in comments:
+        if isinstance(c, dict):
+            comments_lines.append(f"[@{c.get('username', 'usuario')}]: {c.get('text', '')}")
+        else:
+            comments_lines.append(f"- {c}")
+    comments_text_block = "\n".join(comments_lines)
+
     prompt = f"""
         **IDENTIDAD:** Eres SetterMind AI, estratega de prospección y cualificación comercial de alto impacto.
 
@@ -118,9 +170,9 @@ def analyze_profile_with_ai(biography: str):
         {comments_text_block}
 
         **INSTRUCCIONES Y REGLAS DE ORO:**
-        1. ATENCIÓN A LLAMADOS A LA ACCIÓN: Si el post pidió comentar una palabra clave (ejemplo: 'VUELO', 'INFO', 'GUIA', 'PROMPTS', 'PRECIO' o emojis), los comentarios con esa palabra SON PROSPECTOS CALIENTES (Hot Leads) con alta intención. NO LOS DESCARTES ni los consideres spam.
-        2. Selecciona entre 5 y 10 prospectos con mayor potencial.
-        3. Para cada uno, genera 3 suggested_openers naturales, directos, respetuosos y profesionales que conecten la necesidad mostrada en el post con el valor de mi solución.
+        1. ATENCIÓN A LLAMADOS A LA ACCIÓN: Si el autor del post pidió comentar una palabra clave (ejemplo: 'VUELO', 'INFO', 'GUIA', 'PROMPTS', 'PRECIO' o emojis solicitados), los comentarios con esa palabra SON PROSPECTOS CALIENTES (Hot Leads) con alta intención comercial. NO LOS DESCARTES ni los consideres spam.
+        2. Selecciona entre 5 y 10 prospectos con mayor potencial de respuesta.
+        3. Para cada prospecto genera 3 Openers que conecten lo que comentó con la solución que ofrezco, manteniendo un tono natural, empático y profesional (sin sonar a robot ni a spam agresivo).
 
         **FORMATO DE SALIDA (JSON Únicamente):**
         {{
@@ -129,17 +181,17 @@ def analyze_profile_with_ai(biography: str):
               "username": "usuario_sin_arroba",
               "comment_text": "texto exacto del comentario",
               "comment": "texto exacto del comentario",
-              "pain_point_identified": "Dolor, necesidad o interés comercial identificado",
+              "pain_point_identified": "Dolor o necesidad comercial identificada",
               "intent": "Interés explícito manifestado",
               "potential_score": 9,
               "confidence": 90,
               "suggested_openers": [
-                "Opener 1: Saludo empático conectando con lo que comentó",
+                "Opener 1: Saludo empático conectando con su comentario",
                 "Opener 2: Pregunta estratégica sobre su desafío actual",
                 "Opener 3: Enfoque directo ofreciendo la solución"
               ],
               "openers": [
-                "Opener 1: Saludo empático conectando con lo que comentó",
+                "Opener 1: Saludo empático conectando con su comentario",
                 "Opener 2: Pregunta estratégica sobre su desafío actual",
                 "Opener 3: Enfoque directo ofreciendo la solución"
               ]
@@ -148,14 +200,16 @@ def analyze_profile_with_ai(biography: str):
         }}
     """
     try:
-        response_content = generate_ai_json(prompt)
-        print("Análisis de congruencia completado.")
-        return response_content
+        res = generate_ai_json(prompt)
+        if isinstance(res, str):
+            import json
+            res = json.loads(res)
+        print("Análisis de congruencia y comentarios completado.")
+        return res
     except Exception as e:
         print(f"Error en analyze_comments_with_ai: {e}")
-        return None
+        return {"leads": []}
 
-import unicodedata
 
 def clean_tag(text: str) -> str:
     """Elimina acentos, tildes y símbolos para maximizar compatibilidad con Instagram/Apify"""
