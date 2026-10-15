@@ -152,8 +152,7 @@ def analyze_comments_with_ai(comments: list, context: dict):
             comments_lines.append(f"[@{c.get('username', 'usuario')}]: {c.get('text', '')}")
         else:
             comments_lines.append(f"- {c}")
-    comments_text_block = "
-".join(comments_lines)
+    comments_text_block = "\n".join(comments_lines)
 
     prompt = f"""
         **IDENTIDAD:** Eres SetterMind AI, estratega de prospección y cualificación comercial por mensaje directo (DM).
@@ -172,7 +171,7 @@ def analyze_comments_with_ai(comments: list, context: dict):
         1. Para cada prospecto seleccionado, identifica su **Dolor o Necesidad específica** deducida de lo que escribió en su comentario.
         2. Asigna un **potential_score** entre 1 y 10 según su nivel de afinidad con la oferta y urgencia de compra.
         3. Genera 3 Openers de alto impacto siguiendo estrictamente la fórmula de 3 pasos:
-           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{usuario}!", "Qué tal @{usuario}..."), haciendo referencia directa a su comentario para validar su perspectiva.
+           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{{usuario}}!", "Qué tal @{{usuario}}..."), haciendo referencia directa a su comentario para validar su perspectiva.
            - **CONTENIDO / VALOR:** Aborda el dolor detectado con empatía o una observación de valor que enlace lo que comentó con el contexto del producto.
            - **CTA CONVERSACIONAL:** Cierra SIEMPRE con una pregunta abierta y genuina que invite a dialogar (sin vender de golpe ni sonar a plantilla publicitaria).
 
@@ -188,14 +187,14 @@ def analyze_comments_with_ai(comments: list, context: dict):
               "potential_score": 9,
               "confidence": 90,
               "suggested_openers": [
-                "Opener 1: Hola @usuario, vi tu comentario sobre... [Contenido conectado al dolor]. ¿Cómo estás abordando actualmente...?",
-                "Opener 2: Saludo personalizado con enfoque en experiencia + pregunta abierta",
-                "Opener 3: Saludo personalizado con enfoque directo a la solución + pregunta abierta"
+                "Opener 1: Saludo personalizado conectando con dolor y pregunta final",
+                "Opener 2: Saludo personalizado con enfoque en experiencia y pregunta abierta",
+                "Opener 3: Saludo personalizado directo al grano y pregunta abierta"
               ],
               "openers": [
-                "Opener 1: Saludo personalizado...",
-                "Opener 2: Saludo personalizado...",
-                "Opener 3: Saludo personalizado..."
+                "Opener 1: Saludo personalizado conectando con dolor y pregunta final",
+                "Opener 2: Saludo personalizado con enfoque en experiencia y pregunta abierta",
+                "Opener 3: Saludo personalizado directo al grano y pregunta abierta"
               ]
             }}
           ]
@@ -211,6 +210,8 @@ def analyze_comments_with_ai(comments: list, context: dict):
     except Exception as e:
         print(f"Error en analyze_comments_with_ai: {e}")
         return {"leads": []}
+
+
 def clean_tag(text: str) -> str:
     """Elimina acentos, tildes y símbolos para maximizar compatibilidad con Instagram/Apify"""
     nfkd = unicodedata.normalize('NFKD', text)
