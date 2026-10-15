@@ -65,7 +65,9 @@ class OutboxItem(Base):
     score = Column(String, default='')
     selected_opener = Column(String, nullable=False)
     status = Column(String, default='pending')
-    notes = Column(Text, default='')  # <--- Agregar esta línea
+    notes = Column(Text, default='')
+    comment_id = Column(String(100), default="", nullable=True)
+    comment_url = Column(String(500), default="", nullable=True)  # <--- Agregar esta línea
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='outbox_items')
@@ -76,6 +78,8 @@ class Conversation(Base):
     lead_data = Column(JSON, nullable=False)
     status = Column(String, default='iniciado')
     notes = Column(String, default='')
+    comment_id = Column(String(100), default="", nullable=True)
+    comment_url = Column(String(500), default="", nullable=True)
     exported = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)

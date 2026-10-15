@@ -73,7 +73,16 @@ except Exception as _err:
 
 # Migración automática de esquema para SQLite / Postgres
 try:
-    with engine.connect() as conn:
+    # Migración ligera para columnas de enlace a comentarios
+with engine.connect() as conn:
+    for col in ["comment_id TEXT DEFAULT ''", "comment_url TEXT DEFAULT ''"]:
+        try:
+            conn.execute(text(f"ALTER TABLE outbox_items ADD COLUMN {col}"))
+            conn.commit()
+        except Exception:
+            pass
+
+with engine.connect() as conn:
         conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
         conn.commit()
         print("Columna saved_posts agregada exitosamente a strategies.")
@@ -499,7 +508,9 @@ def list_outbox(current_user: User = Depends(get_current_user), db: Session = De
         "score": getattr(r, "score", 8),
         "status": getattr(r, "status", "pending") or "pending",
         "notes": getattr(r, "notes", "") or ""
-    } for r in rows]
+    ,
+        "comment_id": getattr(r, "comment_id", "") or "",
+        "comment_url": getattr(r, "comment_url", "") or ""} for r in rows]
 
 @app.post("/api/outbox")
 def add_to_outbox(
@@ -545,6 +556,12 @@ def add_to_outbox(
 
         score = str(item_data.get("score") or item_data.get("potential_score") or 8)
 
+                comment_id = str(item_data.get("comment_id") or item_data.get("id") or "")
+        post_url_clean = post_url.rstrip("/")
+        comment_url = item_data.get("comment_url") or ""
+        if not comment_url and comment_id and "/p/" in post_url_clean:
+            comment_url = f"{post_url_clean}/c/{comment_id}/"
+
         new_outbox = OutboxItem(
             post_url=post_url,
             prospect_username=username,
@@ -554,6 +571,8 @@ def add_to_outbox(
             score=score,
             status="pending",
             notes="",
+            comment_id=comment_id,
+            comment_url=comment_url,
             owner_id=current_user.id
         )
         db.add(new_outbox)
