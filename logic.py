@@ -1,3 +1,4 @@
+import unicodedata
 # logic.py
 import os
 import json

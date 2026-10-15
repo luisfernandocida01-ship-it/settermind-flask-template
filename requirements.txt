@@ -9,3 +9,4 @@ psycopg2-binary
 openai
 apify-client
 resend
+psycopg[binary]>=3.1.18
