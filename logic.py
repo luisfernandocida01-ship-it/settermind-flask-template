@@ -483,16 +483,21 @@ def get_post_details(url: str):
             profile_analysis = {"niche": "General", "avatar": "Audiencia interesada"}
         
         print("Detalles y análisis de perfil obtenidos con éxito.")
+        prof = profile_analysis if isinstance(profile_analysis, dict) else {}
+        prof = profile_analysis if isinstance(profile_analysis, dict) else {}
         return {
             "post": post_details,
-            "profile": profile_analysis,
-            # Propiedades en la raíz para compatibilidad con el frontend
-            "caption": post_details["caption"],
-            "ownerUsername": post_details["ownerUsername"],
-            "likesCount": post_details["likesCount"],
-            "commentsCount": post_details["commentsCount"],
-            "niche": profile_analysis.get("niche", "General") if isinstance(profile_analysis, dict) else "General",
-            "avatar": profile_analysis.get("avatar", "Audiencia interesada") if isinstance(profile_analysis, dict) else "Audiencia interesada"
+            "profile": prof,
+            "profile_analysis": prof,
+            "caption": post_details.get("caption", ""),
+            "ownerUsername": post_details.get("ownerUsername", ""),
+            "likesCount": post_details.get("likesCount", 0),
+            "commentsCount": post_details.get("commentsCount", 0),
+            "niche": prof.get("niche", "General"),
+            "avatar": prof.get("avatar", "Audiencia interesada"),
+            "profesion": prof.get("profesion", ""),
+            "objetivos": prof.get("objetivos", []),
+            "puntos_de_dolor": prof.get("puntos_de_dolor", [])
         }
 
     except Exception as e:
