@@ -167,13 +167,13 @@ def analyze_comments_with_ai(comments: list, context: dict):
         **COMENTARIOS A ANALIZAR:**
         {comments_text_block}
 
-        **INSTRUCCIONES ESTRATÉGICAS DE GENERACIÓN DE OPENERS:**
-        1. Para cada prospecto seleccionado, identifica su **Dolor o Necesidad específica** deducida de lo que escribió en su comentario.
-        2. Asigna un **potential_score** entre 1 y 10 según su nivel de afinidad con la oferta y urgencia de compra.
-        3. Genera 3 Openers de alto impacto siguiendo estrictamente la fórmula de 3 pasos:
-           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{{usuario}}!", "Qué tal @{{usuario}}..."), haciendo referencia directa a su comentario para validar su perspectiva.
-           - **CONTENIDO / VALOR:** Aborda el dolor detectado con empatía o una observación de valor que enlace lo que comentó con el contexto del producto.
-           - **CTA CONVERSACIONAL:** Cierra SIEMPRE con una pregunta abierta y genuina que invite a dialogar (sin vender de golpe ni sonar a plantilla publicitaria).
+                **INSTRUCCIONES ESTRATÉGICAS DE GENERACIÓN DE OPENERS:**
+        1. Para cada prospecto, extrae el **Dolor / Necesidad comercial principal** basado en su comentario o en su intención manifestada.
+        2. Determina un **potential_score** numérico de 1 a 10 (donde 10 es máxima intención de compra / afinidad).
+        3. Para cada prospecto redacta 3 Openers con esta fórmula exacta:
+           - **GANCHO:** Saludo personalizado llamándolo por su usuario o nombre deducible (Ej: "Hola @{{usuario}}!"), haciendo mención a lo que escribió.
+           - **CONTENIDO / VALOR:** Conecta con empatía sobre el dolor o dilema que planteó en su comentario.
+           - **CTA CONECTADO A TU PRODUCTO/OFERTA:** Cierra OBLIGATORIAMENTE con una pregunta conversacional orientada al **Contexto del Producto / Solución que ofrezco** ({context.get('niche', 'mi oferta')} / {context.get('avatar', 'mi cliente ideal')}), sondeando sutilmente su apertura para explorar dicha solución.
 
         **FORMATO DE SALIDA (JSON Únicamente):**
         {{
