@@ -348,20 +348,61 @@ def generate_prospecting_strategy(context: dict):
 
 def generate_highlights_logic(name: str, mission: str, method_name: str, result_example: str):
     prompt = f"""
-    Eres un estratega experto en Instagram Branding y High-Ticket Setting.
-    Diseña una estructura de Historias Destacadas (Highlights) persuasiva y profesional.
+    Eres un estratega senior de High-Ticket Setting e Instagram Architecture.
+    Tu tarea es redactar el manual de guiones completo para las 5 Historias Destacadas (Highlights) del perfil de Instagram del negocio.
     
-    DATOS DEL CLIENTE:
-    - Nombre o Marca: {name}
-    - Misión / Por qué: {mission}
-    - Nombre del Método: {method_name}
-    - Caso de éxito: {result_example}
-    
-    Genera un texto bien formateado con 4 Highlights indispensables:
-    1. HISTORIA / ORIGEN (Quién eres y tu propósito)
-    2. MÉTODO (Cómo funciona {method_name})
-    3. CASOS DE ÉXITO (Prueba social con {result_example})
-    4. CÓMO EMPEZAR (Llamado a la acción directo al DM)
+    REGLA OBLIGATORIA:
+    No resumas ninguna carpeta. Debes entregar las 5 carpetas desarrolladas HISTORIA POR HISTORIA (con su número, indicación visual exacta, texto en pantalla, guion de audio palabra por palabra y sticker interactivo). Reemplaza todos los datos genéricos por la información real del cliente.
+
+    DATOS DEL NEGOCIO:
+    - Marca / Experto: {name}
+    - Misión / Transformación: {mission}
+    - Método Central: {method_name}
+    - Prueba / Caso de Éxito: {result_example}
+
+    ESTRUCTURA EXACTA A GENERAR:
+
+    ================================================================================
+    HIGHLIGHT 1: EMPIEZA AQUÍ 🚀 (Filtro y Bienvenida)
+    - Portada: Fondo oscuro sólido con tipografía blanca "EMPIEZA AQUÍ" y el logo o nombre.
+    * HISTORIA 1 (El Gancho): Video/Selfie hablando a cámara. Texto en pantalla que mencione el dolor principal. Guion exacto de 15 seg. Sticker: flecha o mención.
+    * HISTORIA 2 (Quiebre de Creencias): Imagen con texto de alto contraste rompiendo la solución tradicional errónea. Guion de reflexión. Sticker de encuesta de validación.
+    * HISTORIA 3 (El Mecanismo): Video frente a pizarra o tablet presentando {method_name}. Guion explicando por qué este vehículo es predecible.
+    * HISTORIA 4 (La Prueba): Captura real de métricas o chat del resultado ({result_example}). Guion validando que es replicable.
+    * HISTORIA 5 (Llamado a la Acción): Video corto. Texto: "Comenta ORIGEN". Guion exacto para invitar al DM y abrir conversación.
+
+    ================================================================================
+    HIGHLIGHT 2: MÉTODO ⚙️ (Desglose del Gran Mecanismo)
+    - Portada: Fondo oscuro con ícono técnico o diagrama y la palabra "MÉTODO".
+    * HISTORIA 1 (Visión General): Diagrama o esquema del sistema completo {method_name}. Guion explicando por qué consta de 3 fases.
+    * HISTORIA 2 (Fase 1 - Atracción/Conversión): Imagen o video mostrando cómo captar prospectos calificados orgánicamente.
+    * HISTORIA 3 (Fase 2 - Cualificación): Gráfica o captura de criterios para filtrar prospectos no aptos.
+    * HISTORIA 4 (Fase 3 - Cierre/Llamada): Explicación de la entrega de solución y transición a agenda de diagnóstico.
+    * HISTORIA 5 (Entrega del Diagrama): Texto en pantalla: "Responde 'METODO'". Guion exacto ofreciendo enviar el diagrama en PDF/alta resolución por mensaje privado.
+
+    ================================================================================
+    HIGHLIGHT 3: RESULTADOS 📈 (Prueba Social Irrefutable)
+    - Portada: Fondo oscuro con gráfica de crecimiento y la palabra "RESULTADOS".
+    * HISTORIA 1 (Punto de Partida): Captura de pantalla o testimonio mostrando el punto de dolor inicial del cliente antes de {method_name}.
+    * HISTORIA 2 (El Punto de Inflexión): Qué ajuste técnico se aplicó con {result_example}.
+    * HISTORIA 3 (El Resultado Final): Capturas de métricas o mensajes de felicitación del cliente.
+    * HISTORIA 4 (CTA de Auditoría): Video o selfie. Texto: "Comenta REVISION". Guion para evaluar si el prospecto califica para el mismo resultado.
+
+    ================================================================================
+    HIGHLIGHT 4: RECURSOS 📥 (Lead Magnets y Activos Gratuitos)
+    - Portada: Fondo oscuro con ícono de documento o regalo y la palabra "RECURSOS".
+    * HISTORIA 1 (El Problema Específico): Explicación de un error común que comete el avatar a diario.
+    * HISTORIA 2 (El Activo de Solución): Presentación visual (mockup o captura de pantalla) de la guía, plantilla o cheatsheet gratuita disponible.
+    * HISTORIA 3 (Qué incluye): Desglose en 3 puntos clave de lo que aprenderá en el recurso.
+    * HISTORIA 4 (Entrega por DM): Texto: "Responde 'PLANTILLA'". Guion directo para que el Setter entregue el PDF en privado.
+
+    ================================================================================
+    HIGHLIGHT 5: AGENDAR 📅 (Filtro para Llamada de Diagnóstico)
+    - Portada: Fondo oscuro con ícono de calendario y la palabra "AGENDAR".
+    * HISTORIA 1 (Propósito de la Sesión): Explicación de qué es la llamada de diagnóstico de 15 minutos.
+    * HISTORIA 2 (Para quién SÍ es): Requisitos claros de experiencia o facturación requerida.
+    * HISTORIA 3 (Para quién NO es): Filtro estricto contra curiosos o personas que buscan atajos sin compromiso.
+    * HISTORIA 4 (El Acceso): Sticker con link a Calendly / formulario y texto: "O responde AGENDA si prefieres que te ayudemos a elegir horario".
     """
     try:
         return generate_ai_text(prompt)
