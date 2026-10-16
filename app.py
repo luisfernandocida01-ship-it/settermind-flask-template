@@ -73,33 +73,25 @@ except Exception as _err:
 
 # Migración automática de esquema para SQLite / Postgres
 try:
-    # Migración ligera para columnas de enlace a comentarios
-with engine.connect() as conn:
-    for col in ["comment_id TEXT DEFAULT ''", "comment_url TEXT DEFAULT ''"]:
+    with engine.connect() as conn:
+        for col in ["comment_id TEXT DEFAULT ''", "comment_url TEXT DEFAULT ''"]:
+            try:
+                conn.execute(text(f"ALTER TABLE outbox_items ADD COLUMN {col}"))
+                conn.commit()
+            except Exception:
+                pass
         try:
-            conn.execute(text(f"ALTER TABLE outbox_items ADD COLUMN {col}"))
+            conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
             conn.commit()
         except Exception:
             pass
-
-with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
-        conn.commit()
-        print("Columna saved_posts agregada exitosamente a strategies.")
+        try:
+            conn.execute(text("ALTER TABLE outbox_items ADD COLUMN notes TEXT DEFAULT ''"))
+            conn.commit()
+        except Exception:
+            pass
 except Exception as _mig_e:
-    # Si la columna ya existe, no hace nada
     pass
-
-
-# Migración ligera para agregar saved_posts si falta
-with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE outbox_items ADD COLUMN notes TEXT DEFAULT ''"))
-        conn.commit()
-    except Exception as e:
-    
-        # Si ya existe la columna o la base es sqlite y no soporta cierta sintaxis, se ignora
-        print(f"Nota de migración saved_posts (probablemente ya existe): {e}")
 
 def get_db():
     db = SessionLocal()
@@ -556,7 +548,7 @@ def add_to_outbox(
 
         score = str(item_data.get("score") or item_data.get("potential_score") or 8)
 
-                comment_id = str(item_data.get("comment_id") or item_data.get("id") or "")
+        comment_id = str(item_data.get("comment_id") or item_data.get("id") or "")
         post_url_clean = post_url.rstrip("/")
         comment_url = item_data.get("comment_url") or ""
         if not comment_url and comment_id and "/p/" in post_url_clean:
