@@ -571,37 +571,39 @@ def get_post_details(url: str):
 
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     prompt = f"""
-    Eres un Director de Arte, Cinematógrafo y Prompt Engineer experto en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
-    Tu misión es transformar el contenido provisto (que puede ser un Manual de Highlights o un Sistema Editorial de Chispa Creativa con 5 Ideas) en una SUITE COMPLETA DE PROMPTS DE PRODUCCIÓN 1 A 1.
+    Eres un Director de Arte y Prompt Engineer de élite especializado en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
+    Transforma el siguiente contenido en una SUITE TÉCNICA DE PRODUCCIÓN 1 A 1.
 
-    CONTENIDO DE ENTRADA:
-    Contexto: {highlight_title}
-    Contenido Base:
+    ORIGEN / CONTEXTO:
+    {highlight_title}
+
+    CONTENIDO BASE A PROCESAR:
     {script_content}
 
-    REGLAS DE GENERACIÓN SEGÚN EL FORMATO DE CADA PIEZA:
-    1. SI ES REEL CARA A CÁMARA (Veo 3.1 / Runway):
-       - Aspecto 9:16 vertical, lente 35mm o 50mm f/1.8, bokeh sutil de fondo, iluminación difusa de oficina moderna contemporánea.
-       - Sujeto profesional ejecutivo/consultor con lenguaje corporal seguro.
-       - Audio y Diálogo: Integra de forma íntegra el Hook Hablado y el Desarrollo en español neutro latinoamericano con sincronización labial exacta:
-         saying: "[Texto íntegro del diálogo a cámara]". Lip sync perfectly synchronized, natural fluent cadence, no awkward pauses.
-    2. SI ES B-ROLL CINEMATOGRÁFICO (Veo 3.1):
-       - Planos de apoyo atmosféricos y dinámicos (pantallas táctiles con analíticas, consultor analizando datos, café en mano en espacio minimalista).
-       - Audio en voz en off (voiceover) en español neutro narrando la idea.
-    3. SI ES CARRUSEL TÉCNICO:
-       - Midjourney v6.1 (--ar 9:16 --v 6.1) para carátula magnética con tipografía editorial o mockups de dispositivos oscuros.
-       - Ficha técnica Canva: Fondo #0F172A, texto #FFFFFF, acentos en #0284C7, distribución de láminas (Portada, Desglose PAS, CTA final).
+    ESTÁNDAR DE IDIOMA Y REGLAS TÉCNICAS OBLIGATORIAS:
+    1. PROMPTS DE VIDEO (Google Veo 3.1 / Runway Gen-3):
+       - Descripción visual, cinemática y técnica: 100% EN INGLÉS PROFESIONAL (subject description, 35mm lens, f/1.8, shallow depth of field, modern executive workspace, diffused soft daylight, 4k resolution, vertical 9:16 aspect ratio).
+       - Audio, Locución y Lip Sync: ESPECIFICAR EN ESPAÑOL NEUTRO con el diálogo ÍNTEGRO extraído del guion (sin recortar ni resumir):
+         `...speaking directly to camera with fluid natural cadence in clear neutral Latin American Spanish, saying: "[Texto completo en español extraído del guion]". Lip sync synchronized.`
+       - Si es B-Roll: Descripción de planos en inglés y locución en off (voiceover) en español neutro.
 
-    FORMATO DE SALIDA REQUERIDO:
-    Procesa TODAS las secciones (ya sean los 5 Highlights o las 5 Ideas). Para cada una genera:
+    2. PROMPTS DE IMAGEN / MOCKUPS (Midjourney v6.1 / Flux):
+       - Estilo visual, iluminación, entorno y render: 100% EN INGLÉS (editorial design, modern luxury dark UI, matte texture, studio lighting, --ar 9:16 --v 6.1).
+       - Texto que debe ir incrustado o visible en la imagen: EN ESPAÑOL EXACTO entre comillas (ejemplo: `bold typography saying "Texto en Español", minimal layout...`).
 
+    3. ESPECIFICACIONES DE MONTAJE Y CANVA:
+       - 100% EN ESPAÑOL (textos en pantalla de los primeros 3 segundos, llamado a la acción, paleta institucional #0F172A, #1E293B, #0284C7, y zona libre para stickers de interacción).
+
+    FORMATO OBLIGATORIO POR CADA PIEZA O HISTORIA:
     ==================================================
-    ## [NOMBRE DE LA PIEZA / IDEA / HIGHLIGHT]
-    - **Formato:** [Reel Cara a Cámara / B-Roll Cinematográfico / Carrusel Técnico]
-    - **Prompt Técnico de Producción:**
-      "[Prompt completo y listo para copiar en la herramienta de IA correspondiente]"
-    - **Directivas de Montaje / Canva:**
-      [Texto en pantalla de los primeros 3s, llamado a la acción y ubicación recomendada]
+    ## [IDENTIFICADOR: HIGHLIGHT X O IDEA Y] › [TÍTULO]
+    - **Formato:** [Reel Cara a Cámara (9:16) / B-Roll Cinematográfico (9:16) / Carrusel Técnico (9:16)]
+    - **Prompt Técnico (Veo 3.1 / Midjourney):**
+      "[Prompt técnico en inglés cinematográfico con los textos o diálogos verbatim en español]"
+    - **Ficha de Montaje (Canva / Edición):**
+      - Texto en pantalla (primeros 3s): "[Texto en español]"
+      - Llamado a la acción (CTA): "[Texto en español]"
+      - Disparador / Nota técnica: [Recomendación de sticker o lámina]
     ==================================================
     """
     try:
