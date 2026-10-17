@@ -551,31 +551,30 @@ def get_post_details(url: str):
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     prompt = f"""
     Eres un Director de Arte y Prompt Engineer para Google Veo 3.1, Midjourney v6.1 y Canva.
-    Tu tarea es transformar el siguiente guion en prompts técnicos de producción listos para ejecutar.
+    Genera los prompts técnicos asignando un identificador claro a cada elemento del guion.
 
     DATOS DE ENTRADA:
     Highlight: {highlight_title}
     Guion Completo:
     {script_content}
 
-    REGLAS OBLIGATORIAS:
-    1. PROMPT 1 A 1: Genera exactamente un bloque de prompt por cada historia del guion.
-    2. CARACTERIZACIÓN COMPLETA DEL PERSONAJE (Veo 3.1):
-       En cada historia de video a cámara, el prompt DEBE incluir obligatoriamente:
-       - Sujeto: Rango de edad, apariencia profesional contemporánea, vestimenta ejecutiva moderna y lenguaje corporal confiado.
-       - Entorno: Oficina moderna/minimalista, fondo desenfocado (bokeh), iluminación suave cinematográfica difusa.
-       - Cámara: 35mm o 50mm, f/1.8, 4K, relación de aspecto vertical 9:16.
-       - Audio/Voz: Diálogo ÍNTEGRO extraído del guion en español neutro fluido, con lip sync sincronizado. NUNCA uses corchetes genéricos como '[Tu Nombre]'; usa el nombre o marca presente en el guion.
-    3. PROMPTS DE IMAGEN (Midjourney v6.1):
-       Para historias de datos, mockups o texto de alto contraste, redacta prompts descriptivos con parámetros: --ar 9:16 --v 6.1.
-    4. ESPECIFICACIONES CANVA:
-       Para elementos gráficos fijos, define formato 1080x1920, paleta oscura (#0F172A, acentos cian/eléctrico) y ubicación del sticker interactivo.
+    REGLAS:
+    1. IDENTIFICACIÓN PRECISA: Cada bloque debe comenzar con el encabezado exacto:
+       `### [{highlight_title}] › HISTORIA X: [NOMBRE DE LA HISTORIA]`
+    2. CARACTERIZACIÓN (Veo 3.1):
+       - Sujeto profesional, vestimenta ejecutiva moderna, oficina contemporánea, bokeh, lente 35mm, vertical 9:16.
+       - Incluye el texto íntegro en español dentro de 'saying: "[Guion exacto]"' con sincronización labial.
+    3. IMAGEN / CANVA:
+       - Midjourney v6.1 (--ar 9:16 --v 6.1) para mockups y pruebas.
+       - Canva para carátulas y zonas de stickers interactivos.
 
-    FORMATO DE SALIDA (Repite este formato por cada historia del guion):
-    ### HISTORIA X: [Título de la Historia]
-    - **Tipo:** Video Veo 3.1 / Imagen Midjourney / Ficha Canva
+    FORMATO OBLIGATORIO POR HISTORIA:
+    ==================================================
+    ### [{highlight_title}] › HISTORIA X: [Tipo: Video Veo 3.1 | Imagen Midjourney | Canva]
+    - **Objetivo:** [Breve descripción de la historia]
     - **Prompt Técnico:**
-    "[Descripción cinematográfica completa del sujeto, vestimenta, iluminación, lente 35mm, 9:16]. Speaking naturally to camera in clear neutral Spanish with fluid cadence, saying: \"[Texto textual completo del guion de audio sin recortes]\". Lip sync perfectly synchronized, 4K resolution."
+    "[Prompt detallado y listo para copiar]"
+    ==================================================
     """
     try:
         return generate_ai_text(prompt)
