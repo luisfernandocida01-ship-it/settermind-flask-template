@@ -140,9 +140,8 @@ class ConversationUpdate(BaseModel):
 
 
 class MultimediaPromptsRequest(BaseModel):
-    name: str
-    method_name: str
-    topic: str
+    highlight_title: str
+    script_content: str
 
 class HighlightsRequest(BaseModel):
     name: str
@@ -676,7 +675,7 @@ def export_conversation(convo_id: str, current_user: User = Depends(get_current_
 @app.post("/api/generate-multimedia-prompts")
 def api_generate_multimedia_prompts(req: MultimediaPromptsRequest, current_user: User = Depends(get_current_user)):
     from logic import generate_multimedia_prompts_logic
-    res = generate_multimedia_prompts_logic(req.name, req.method_name, req.topic)
+    res = generate_multimedia_prompts_logic(req.highlight_title, req.script_content)
     if not res:
         raise HTTPException(status_code=500, detail="Error al generar prompts multimedia.")
     return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}

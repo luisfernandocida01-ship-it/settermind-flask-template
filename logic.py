@@ -548,55 +548,27 @@ def get_post_details(url: str):
         return None
 
 
-def generate_multimedia_prompts_logic(name: str, method_name: str, topic: str):
+def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     prompt = f"""
-    Eres un Director Creativo y Prompt Engineer experto en Inteligencia Artificial Generativa Visual (Google Veo 3.1 Lite, Midjourney v6.1, Flux.1 y Runway Gen-3).
-    Tu misión es convertir la estrategia de marca de un negocio en una suite de PROMPTS DE PRODUCCIÓN MULTIMEDIA listos para copiar y pegar.
+    Eres un Director de Producción y Prompt Engineer para Google Veo 3.1, Midjourney v6.1 y Canva.
+    Genera los prompts técnicos correspondientes EXCLUSIVAMENTE a las historias contenidas en el siguiente guion.
 
-    DATOS DEL NEGOCIO:
-    - Marca / Experto: {name}
-    - Método / Mecanismo: {method_name}
-    - Tema o Enfoque: {topic}
+    DATOS DE ENTRADA:
+    Highlight: {highlight_title}
+    Guion Completo:
+    {script_content}
 
-    IMPORTANTE:
-    - Los prompts para generación de video (Google Veo 3.1 / Runway) deben describir la escena visual en inglés técnico, pero ESPECIFICAR EXPLÍCITAMENTE que el audio/voz hablada a cámara sea en ESPAÑOL NEUTRO, incluyendo las frases clave que debe pronunciar en español:
-      Ejemplo para Veo: '...speaking naturally to camera in clear neutral Spanish, saying: "[Frase clave en español]". Lip sync synchronized...'
-    - Los prompts de Midjourney/Flux van en inglés técnico.
-    - Las fichas de diseño de Canva y los guiones van 100% en ESPAÑOL.
+    REGLAS OBLIGATORIAS:
+    1. PROMPT 1 A 1: Genera un prompt por cada historia identificada en el guion.
+    2. CERO RESÚMENES EN EL DIÁLOGO: En las historias con video/cámara, copia el texto ÍNTEGRO del guion de audio (24-28 palabras para clips de 8-10s) dentro de 'saying: "[Texto exacto sin recortes]"'.
+    3. CADENCIA DE VOZ: Especifica ritmo fluido y continuo en español neutro, sin pausas artificiales, con sincronización labial.
+    4. DESCRIPCIONES VISUALES: Estilo cinematográfico en inglés técnico, formato 9:16 vertical, iluminación difusa de oficina moderna.
+    5. IMÁGENES / CARÁTULAS: Para historias de capturas, mockups o quiebres, genera prompts para Midjourney v6.1 (--ar 9:16 --v 6.1).
 
-    Genera exactamente esta estructura:
-
-    ================================================================================
-    🎥 1. PROMPTS PARA GENERADORES DE VIDEO IA (Google Veo 3.1 / Runway Gen-3 / Kling)
-    ================================================================================
-    * Prompt 1 (Historia de Gancho / Cara a Cámara - 9:16):
-    "A confident professional Hispanic entrepreneur in modern smart casual attire speaking directly to the camera in a sleek contemporary office workspace. Cinematic diffused natural daylight from a large window, soft cinematic blur in background (bokeh), shot on 35mm lens, f/1.8, 4K resolution, ultra-realistic skin texture, subtle hand gestures, engaging body language, 9:16 vertical aspect ratio, smooth handheld camera movement."
-
-    * Prompt 2 (Historia de Método / Presentación de Diagrama - 9:16):
-    "Over-the-shoulder medium shot of a professional consultant sketching an elegant digital pipeline flow chart on an iPad Pro with Apple Pencil. Minimalist tech office environment, moody modern workspace lighting, deep slate blue ambient tones, ultra-detailed 4k, crisp sharp focus on screen, smooth camera pan, 9:16 vertical ratio."
-
-    ================================================================================
-    🖼️ 2. PROMPTS PARA GENERADORES DE IMAGEN / MOCKUPS (Midjourney v6.1 / Flux.1)
-    ================================================================================
-    * Prompt 1 (Mockup de Dashboard de Resultados y Métricas):
-    "High-end luxury SaaS analytics dashboard displayed on a modern iPhone 15 Pro titanium mockup resting on a clean dark slate desk, vertical 9:16 aspect ratio. Deep navy background #0F172A, glowing cyan and electric blue interface accents, showing sharp growth metrics graphs and success metrics. Photorealistic studio lighting, Octane render, 8k resolution, minimalist commercial aesthetic --ar 9:16 --v 6.1"
-
-    * Prompt 2 (Portada de Carátula para Highlight / Nota Minimalista):
-    "Minimalist dark aesthetic typography card for Instagram story, vertical 9:16. Premium matte dark background #0F172A, clean bold modern sans-serif text, glowing subtle gradient border in cyan #0284C7. Editorial typography layout, sharp vector details, clean negative space, Behance featured design --ar 9:16 --v 6.1"
-
-    ================================================================================
-    🎨 3. ESPECIFICACIONES DE DISEÑO PARA CANVA / FIGMA
-    ================================================================================
-    - Dimensiones exactas: 1080 x 1920 px (Formato Historias 9:16).
-    - Paleta de color institucional:
-      * Fondo primario: #0F172A (Azul Noche Profundo).
-      * Fondo secundario: #1E293B (Pizarra Oscuro).
-      * Color de Acento y CTAs: #0284C7 (Azul Eléctrico / Cian).
-      * Tipografía principal: #FFFFFF (Blanco Puro).
-    - Jerarquía de Fuentes recomendadas en Canva:
-      * Títulos: Montserrat Bold o Inter Extra Bold (tamaño 68 a 78 pt).
-      * Cuerpo de texto: Inter Regular o SF Pro (tamaño 32 a 40 pt).
-    - Zona Segura para Stickers: Dejar un espacio vacío de 450 x 200 px centrado en el tercio inferior de la pantalla para evitar que los elementos nativos de Instagram (nombre de usuario arriba y barra de respuesta abajo) tapen la interacción.
+    FORMATO DE RESPUESTA:
+    Para cada historia del guion:
+    - **HISTORIA X:** [Tipo: Video Veo 3.1 | Imagen Midjourney | Ficha Canva]
+    - **Prompt:** "..."
     """
     try:
         return generate_ai_text(prompt)
