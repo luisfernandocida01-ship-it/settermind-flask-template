@@ -550,31 +550,25 @@ def get_post_details(url: str):
 
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     prompt = f"""
-    Eres un Director de Arte y Prompt Engineer para Google Veo 3.1, Midjourney v6.1 y Canva.
-    Genera los prompts técnicos asignando un identificador claro a cada elemento del guion.
+    Eres Director de Arte y Prompt Engineer para Google Veo 3.1, Midjourney v6.1 y Canva.
+    Analiza TODO el documento de guiones provisto y genera los prompts técnicos para CADA UNO de los Highlights presentes (del 1 al 5).
 
-    DATOS DE ENTRADA:
-    Highlight: {highlight_title}
-    Guion Completo:
+    GUION COMPLETO:
     {script_content}
 
-    REGLAS:
-    1. IDENTIFICACIÓN PRECISA: Cada bloque debe comenzar con el encabezado exacto:
-       `### [{highlight_title}] › HISTORIA X: [NOMBRE DE LA HISTORIA]`
-    2. CARACTERIZACIÓN (Veo 3.1):
-       - Sujeto profesional, vestimenta ejecutiva moderna, oficina contemporánea, bokeh, lente 35mm, vertical 9:16.
-       - Incluye el texto íntegro en español dentro de 'saying: "[Guion exacto]"' con sincronización labial.
-    3. IMAGEN / CANVA:
-       - Midjourney v6.1 (--ar 9:16 --v 6.1) para mockups y pruebas.
-       - Canva para carátulas y zonas de stickers interactivos.
-
-    FORMATO OBLIGATORIO POR HISTORIA:
-    ==================================================
-    ### [{highlight_title}] › HISTORIA X: [Tipo: Video Veo 3.1 | Imagen Midjourney | Canva]
-    - **Objetivo:** [Breve descripción de la historia]
-    - **Prompt Técnico:**
-    "[Prompt detallado y listo para copiar]"
-    ==================================================
+    INSTRUCCIONES:
+    1. Agrupa por Highlight usando este encabezado principal:
+       ==================================================
+       ## HIGHLIGHT X: [NOMBRE DEL HIGHLIGHT]
+       ==================================================
+    2. Para cada historia dentro de ese Highlight:
+       ### HISTORIA Y: [NOMBRE O TIPO]
+       - **Tipo:** Video Veo 3.1 | Imagen Midjourney | Ficha Canva
+       - **Prompt Técnico:**
+         - Si es Video (Veo 3.1): Sujeto profesional contemporáneo, oficina moderna, bokeh, lente 35mm, 9:16 vertical. En audio: '...speaking naturally in clear neutral Spanish, saying: "[Texto exacto del guion de audio sin recortes]". Lip sync synchronized.'
+         - Si es Imagen (Midjourney v6.1): Parámetros técnicos concisos con --ar 9:16 --v 6.1.
+         - Si es Canva: Especificaciones de diseño (1080x1920, paleta oscura, zona segura de stickers).
+    3. NO te detengas en el Highlight 1; procesa de forma secuencial la totalidad del texto.
     """
     try:
         return generate_ai_text(prompt)
