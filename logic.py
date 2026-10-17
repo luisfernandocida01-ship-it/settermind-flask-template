@@ -413,21 +413,42 @@ def generate_highlights_logic(name: str, mission: str, method_name: str, result_
 
 def generate_content_ideas_logic(topic: str):
     prompt = f"""
-    Eres un creador de contenido viral y estratega de conversión para Setters.
-    Genera 5 ideas de contenido accionables para el tema: '{topic}'.
-    
-    Para cada idea incluye:
-    - Gancho (Hook) para los primeros 3 segundos.
-    - Desarrollo del dolor o concepto central.
-    - Llamado a la acción (CTA) para que comenten una palabra clave e iniciar DM.
+    Actúa como Director Editorial y Estratega de Conversión Orgánica para Setters y Consultores High-Ticket.
+    Diseña un Sistema Editorial Diario de 5 piezas de contenido altamente accionables y diferenciadas sobre el tema: '{topic}'.
+
+    OBJETIVO:
+    Generar curiosidad, autoridad y quiebre de objeciones para que los prospectos calificados comenten una palabra clave y el Setter inicie una conversación de venta consultiva en DM.
+
+    REGLAS DE TONO Y ESTILO:
+    - CERO clichés de marketing barato ("revoluciona tus ventas", "duplica tus ingresos en 30 días", etc.).
+    - Tono profesional, estratégico, enfocado en criterio, sistemas y proceso humano asistido por tecnología.
+    - Español neutro latinoamericano profesional.
+
+    ESTRUCTURA EXACTA DE LAS 5 IDEAS:
+    Entrega 5 ideas, cada una cubriendo un ángulo editorial distinto:
+    1. Ángulo 1: Quiebre de Creencia (Desmontar una verdad asumida o error común).
+    2. Ángulo 2: El Error Silencioso (La fuga oculta que quema prospectos o baja la tasa de respuesta).
+    3. Ángulo 3: Micro-Caso de Transformación (El antes caótico vs el después con método estructurado).
+    4. Ángulo 4: Desglose Táctico (Mini-sistema de 3 fases o pasos directos).
+    5. Ángulo 5: Filtro de Calificación / Diagnóstico (Identificar si el prospecto califica para la solución).
+
+    FORMATO POR CADA IDEA:
+    ==================================================
+    ## IDEA [N]: [TÍTULO IMPACTANTE] — [ÁNGULO EDITORIAL]
+    - **Formato Sugerido:** [Reel Cara a Cámara (9:16) / Carrusel Técnico / B-Roll Cinematográfico]
+    - **Hook en Pantalla (Texto grande primeros 3s):** "[Texto corto de alto impacto]"
+    - **Hook Hablado / Entrada:** "[Frase inicial que frena el scroll sin sonar a venta]"
+    - **Desarrollo (Estructura PAS: Problema, Agitación, Solución):**
+      [Guion o punteo de 4 a 6 líneas con datos concretos, fricciones reales y criterio estratégico]
+    - **Llamado a la Acción (CTA en DM):** "Comenta '[PALABRA_CLAVE]' y te envío [recurso/auditoría/diagrama] por mensaje directo."
+    - **Disparador para el Setter (Mensaje de apertura en DM):** "[Primer mensaje consultivo que el setter envía cuando el usuario comenta la palabra]"
+    ==================================================
     """
     try:
         return generate_ai_text(prompt)
     except Exception as e:
-        print(f"Error generando ideas: {e}")
+        print(f"Error generando ideas de contenido: {e}")
         return None
-
-
 def generate_lead_magnet_logic(resource_type: str):
     prompt = f"""
     Eres un especialista en embudos orgánicos para Setters.
