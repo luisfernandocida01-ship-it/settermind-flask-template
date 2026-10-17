@@ -546,3 +546,58 @@ def get_post_details(url: str):
     except Exception as e:
         print(f"Error en get_post_details: {e}")
         return None
+
+
+def generate_multimedia_prompts_logic(name: str, method_name: str, topic: str):
+    prompt = f"""
+    Eres un Director Creativo y Prompt Engineer experto en Inteligencia Artificial Generativa Visual (Google Veo 3.1 Lite, Midjourney v6.1, Flux.1 y Runway Gen-3).
+    Tu misión es convertir la estrategia de marca de un negocio en una suite de PROMPTS DE PRODUCCIÓN MULTIMEDIA listos para copiar y pegar.
+
+    DATOS DEL NEGOCIO:
+    - Marca / Experto: {name}
+    - Método / Mecanismo: {method_name}
+    - Tema o Enfoque: {topic}
+
+    IMPORTANTE:
+    - Los prompts para herramientas de IA (Veo, Midjourney, Flux) DEBEN estar redactados en INGLÉS técnico y profesional, ya que es el idioma donde mejor interpretan estilos, lentes e iluminación.
+    - La ficha de diseño de Canva debe estar en ESPAÑOL.
+
+    Genera exactamente esta estructura:
+
+    ================================================================================
+    🎥 1. PROMPTS PARA GENERADORES DE VIDEO IA (Google Veo 3.1 / Runway Gen-3 / Kling)
+    ================================================================================
+    * Prompt 1 (Historia de Gancho / Cara a Cámara - 9:16):
+    "A confident professional Hispanic entrepreneur in modern smart casual attire speaking directly to the camera in a sleek contemporary office workspace. Cinematic diffused natural daylight from a large window, soft cinematic blur in background (bokeh), shot on 35mm lens, f/1.8, 4K resolution, ultra-realistic skin texture, subtle hand gestures, engaging body language, 9:16 vertical aspect ratio, smooth handheld camera movement."
+
+    * Prompt 2 (Historia de Método / Presentación de Diagrama - 9:16):
+    "Over-the-shoulder medium shot of a professional consultant sketching an elegant digital pipeline flow chart on an iPad Pro with Apple Pencil. Minimalist tech office environment, moody modern workspace lighting, deep slate blue ambient tones, ultra-detailed 4k, crisp sharp focus on screen, smooth camera pan, 9:16 vertical ratio."
+
+    ================================================================================
+    🖼️ 2. PROMPTS PARA GENERADORES DE IMAGEN / MOCKUPS (Midjourney v6.1 / Flux.1)
+    ================================================================================
+    * Prompt 1 (Mockup de Dashboard de Resultados y Métricas):
+    "High-end luxury SaaS analytics dashboard displayed on a modern iPhone 15 Pro titanium mockup resting on a clean dark slate desk, vertical 9:16 aspect ratio. Deep navy background #0F172A, glowing cyan and electric blue interface accents, showing sharp growth metrics graphs and success metrics. Photorealistic studio lighting, Octane render, 8k resolution, minimalist commercial aesthetic --ar 9:16 --v 6.1"
+
+    * Prompt 2 (Portada de Carátula para Highlight / Nota Minimalista):
+    "Minimalist dark aesthetic typography card for Instagram story, vertical 9:16. Premium matte dark background #0F172A, clean bold modern sans-serif text, glowing subtle gradient border in cyan #0284C7. Editorial typography layout, sharp vector details, clean negative space, Behance featured design --ar 9:16 --v 6.1"
+
+    ================================================================================
+    🎨 3. ESPECIFICACIONES DE DISEÑO PARA CANVA / FIGMA
+    ================================================================================
+    - Dimensiones exactas: 1080 x 1920 px (Formato Historias 9:16).
+    - Paleta de color institucional:
+      * Fondo primario: #0F172A (Azul Noche Profundo).
+      * Fondo secundario: #1E293B (Pizarra Oscuro).
+      * Color de Acento y CTAs: #0284C7 (Azul Eléctrico / Cian).
+      * Tipografía principal: #FFFFFF (Blanco Puro).
+    - Jerarquía de Fuentes recomendadas en Canva:
+      * Títulos: Montserrat Bold o Inter Extra Bold (tamaño 68 a 78 pt).
+      * Cuerpo de texto: Inter Regular o SF Pro (tamaño 32 a 40 pt).
+    - Zona Segura para Stickers: Dejar un espacio vacío de 450 x 200 px centrado en el tercio inferior de la pantalla para evitar que los elementos nativos de Instagram (nombre de usuario arriba y barra de respuesta abajo) tapen la interacción.
+    """
+    try:
+        return generate_ai_text(prompt)
+    except Exception as e:
+        print(f"Error generando prompts multimedia: {e}")
+        return None
