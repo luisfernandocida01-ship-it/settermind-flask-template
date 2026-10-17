@@ -571,25 +571,38 @@ def get_post_details(url: str):
 
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     prompt = f"""
-    Eres Director de Arte y Prompt Engineer para Google Veo 3.1, Midjourney v6.1 y Canva.
-    Analiza TODO el documento de guiones provisto y genera los prompts técnicos para CADA UNO de los Highlights presentes (del 1 al 5).
+    Eres un Director de Arte, Cinematógrafo y Prompt Engineer experto en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
+    Tu misión es transformar el contenido provisto (que puede ser un Manual de Highlights o un Sistema Editorial de Chispa Creativa con 5 Ideas) en una SUITE COMPLETA DE PROMPTS DE PRODUCCIÓN 1 A 1.
 
-    GUION COMPLETO:
+    CONTENIDO DE ENTRADA:
+    Contexto: {highlight_title}
+    Contenido Base:
     {script_content}
 
-    INSTRUCCIONES:
-    1. Agrupa por Highlight usando este encabezado principal:
-       ==================================================
-       ## HIGHLIGHT X: [NOMBRE DEL HIGHLIGHT]
-       ==================================================
-    2. Para cada historia dentro de ese Highlight:
-       ### HISTORIA Y: [NOMBRE O TIPO]
-       - **Tipo:** Video Veo 3.1 | Imagen Midjourney | Ficha Canva
-       - **Prompt Técnico:**
-         - Si es Video (Veo 3.1): Sujeto profesional contemporáneo, oficina moderna, bokeh, lente 35mm, 9:16 vertical. En audio: '...speaking naturally in clear neutral Spanish, saying: "[Texto exacto del guion de audio sin recortes]". Lip sync synchronized.'
-         - Si es Imagen (Midjourney v6.1): Parámetros técnicos concisos con --ar 9:16 --v 6.1.
-         - Si es Canva: Especificaciones de diseño (1080x1920, paleta oscura, zona segura de stickers).
-    3. NO te detengas en el Highlight 1; procesa de forma secuencial la totalidad del texto.
+    REGLAS DE GENERACIÓN SEGÚN EL FORMATO DE CADA PIEZA:
+    1. SI ES REEL CARA A CÁMARA (Veo 3.1 / Runway):
+       - Aspecto 9:16 vertical, lente 35mm o 50mm f/1.8, bokeh sutil de fondo, iluminación difusa de oficina moderna contemporánea.
+       - Sujeto profesional ejecutivo/consultor con lenguaje corporal seguro.
+       - Audio y Diálogo: Integra de forma íntegra el Hook Hablado y el Desarrollo en español neutro latinoamericano con sincronización labial exacta:
+         saying: "[Texto íntegro del diálogo a cámara]". Lip sync perfectly synchronized, natural fluent cadence, no awkward pauses.
+    2. SI ES B-ROLL CINEMATOGRÁFICO (Veo 3.1):
+       - Planos de apoyo atmosféricos y dinámicos (pantallas táctiles con analíticas, consultor analizando datos, café en mano en espacio minimalista).
+       - Audio en voz en off (voiceover) en español neutro narrando la idea.
+    3. SI ES CARRUSEL TÉCNICO:
+       - Midjourney v6.1 (--ar 9:16 --v 6.1) para carátula magnética con tipografía editorial o mockups de dispositivos oscuros.
+       - Ficha técnica Canva: Fondo #0F172A, texto #FFFFFF, acentos en #0284C7, distribución de láminas (Portada, Desglose PAS, CTA final).
+
+    FORMATO DE SALIDA REQUERIDO:
+    Procesa TODAS las secciones (ya sean los 5 Highlights o las 5 Ideas). Para cada una genera:
+
+    ==================================================
+    ## [NOMBRE DE LA PIEZA / IDEA / HIGHLIGHT]
+    - **Formato:** [Reel Cara a Cámara / B-Roll Cinematográfico / Carrusel Técnico]
+    - **Prompt Técnico de Producción:**
+      "[Prompt completo y listo para copiar en la herramienta de IA correspondiente]"
+    - **Directivas de Montaje / Canva:**
+      [Texto en pantalla de los primeros 3s, llamado a la acción y ubicación recomendada]
+    ==================================================
     """
     try:
         return generate_ai_text(prompt)
