@@ -559,8 +559,10 @@ def generate_multimedia_prompts_logic(name: str, method_name: str, topic: str):
     - Tema o Enfoque: {topic}
 
     IMPORTANTE:
-    - Los prompts para herramientas de IA (Veo, Midjourney, Flux) DEBEN estar redactados en INGLÉS técnico y profesional, ya que es el idioma donde mejor interpretan estilos, lentes e iluminación.
-    - La ficha de diseño de Canva debe estar en ESPAÑOL.
+    - Los prompts para generación de video (Google Veo 3.1 / Runway) deben describir la escena visual en inglés técnico, pero ESPECIFICAR EXPLÍCITAMENTE que el audio/voz hablada a cámara sea en ESPAÑOL NEUTRO, incluyendo las frases clave que debe pronunciar en español:
+      Ejemplo para Veo: '...speaking naturally to camera in clear neutral Spanish, saying: "[Frase clave en español]". Lip sync synchronized...'
+    - Los prompts de Midjourney/Flux van en inglés técnico.
+    - Las fichas de diseño de Canva y los guiones van 100% en ESPAÑOL.
 
     Genera exactamente esta estructura:
 
