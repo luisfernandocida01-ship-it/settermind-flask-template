@@ -894,3 +894,15 @@ def run_db_migration(secret: str = ""):
                 results.append(f"Nota/Error: {cmd} -> {str(e)}")
                 
     return {"status": "completado", "detalles": results}
+
+
+@app.get("/api/admin-set-plan")
+def set_user_plan_admin(email: str, tier: str, secret: str = "", db: Session = Depends(get_db)):
+    if secret != "SetterMind2026Migrate":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user.plan_tier = tier.lower()
+    db.commit()
+    return {"status": "ok", "email": user.email, "plan_tier": user.plan_tier}
