@@ -694,6 +694,13 @@ def api_generate_content_ideas(req: ContentIdeasRequest, current_user: User = De
         raise HTTPException(status_code=500, detail="Error al generar ideas.")
     return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
 
+@app.post("/api/generate-engagement-poll")
+def api_generate_engagement_poll(req: EngagementPollRequest, current_user: User = Depends(get_current_user)):
+    res = generate_engagement_poll_logic(req.question)
+    if not res:
+        raise HTTPException(status_code=500, detail="Error al generar dinámicas de engagement.")
+    return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
+
 @app.post("/api/generate-lead-magnet-plan")
 def api_generate_lead_magnet(req: LeadMagnetRequest, current_user: User = Depends(get_current_user)):
     res = generate_lead_magnet_logic(req.resource_type)

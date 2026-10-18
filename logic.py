@@ -497,20 +497,71 @@ def generate_lead_magnet_logic(resource_type: str):
         return None
 def generate_engagement_poll_logic(question: str):
     prompt = f"""
-    Diseña una dinámica de historias de Instagram para abrir conversaciones de prospección a partir de esta pregunta/tema: '{question}'.
-    
-    Genera:
-    - 3 Historias de contexto previo.
-    - 1 Sticker de Encuesta / Pregunta con opciones estratégicas (una opción que revele dolor urgente).
-    - Guion rompehielo para responder a quienes voten la opción de dolor.
+    Actúa como Estratega de Engagement y Conversión en Historias de Instagram para Setters y Consultores High-Ticket.
+    Diseña una SECUENCIA COMPLETA DE INTERACCIÓN Y PROSPECCIÓN (5 Historias Consecutivas) basada en la temática o pregunta central: '{question}'.
+
+    OBJETIVO:
+    Transformar votantes pasivos de stickers en conversaciones cualificadas en DM para el Setter.
+
+    REGLAS DE DISEÑO:
+    - Diseñado para formato vertical 9:16 de Historias de Instagram.
+    - Cada historia DEBE usar un sticker nativo interactivo diferente.
+    - CERO preguntas genéricas aburridas; enfócate en fricciones reales del mercado.
+
+    FORMATO OBLIGATORIO DE SALIDA:
+    ==================================================
+    # SECUENCIA DE ENGAGEMENT: [TÍTULO DE LA DINÁMICA]
+    - **Tema Central:** {question}
+    - **Objetivo del Embudo:** [Qué cualifica el Setter con esta secuencia]
+
+    ---
+    ## HISTORIA 1: LA ENCUESTA POLARIZANTE (FILTRO DE DOLOR)
+    - **Visual:** Foto o video casual / fondo oscuro limpio (#0F172A).
+    - **Texto en Pantalla:** "[Pregunta directa al grano que despierte curiosidad]"
+    - **Sticker Interactivo:** Encuesta Binaria (Poll Sticker).
+      - Opción A: "[Respuesta dolor/fricción]"
+      - Opción B: "[Respuesta ideal/aspiracional]"
+    - **Guion del Setter (Apertura por DM a quienes votaron):**
+      - Si votó Opción A: "[Mensaje de apertura consultivo]"
+      - Si votó Opción B: "[Pregunta de validación]"
+
+    ## HISTORIA 2: EL SLIDER DE TERMÓMETRO (INTENSIDAD DEL PROBLEMA)
+    - **Visual:** Captura de métrica, pantalla o foto de trabajo.
+    - **Texto en Pantalla:** "[Contexto breve explicando por qué este problema frena los resultados]"
+    - **Sticker Interactivo:** Emoji Slider (Calibrador de 0 a 100%).
+      - Pregunta: "[¿Qué tanto te está pasando esto hoy?]"
+    - **Guion del Setter (Apertura por DM según intensidad):**
+      "[Mensaje directo rompiendo el hielo empáticamente]"
+
+    ## HISTORIA 3: EL CUESTIONARIO DE DIAGNÓSTICO (QUIZ MULTI-OPCIÓN)
+    - **Visual:** Gráfico simple, carátula o video breve explicativo.
+    - **Texto en Pantalla:** "[Identifica qué tipo de obstáculo tienes]"
+    - **Sticker Interactivo:** Quiz (3 opciones).
+      - Opción 1: "[Falta de proceso/método]"
+      - Opción 2: "[Falta de tiempo/herramientas]"
+      - Opción 3: "[Incertidumbre de por dónde empezar]"
+    - **Guion del Setter (Para abordar según la opción elegida):**
+      "[Respuesta personalizada a la opción ganadora del usuario]"
+
+    ## HISTORIA 4: LA CAJA DE DESAHOGO (QUESTION BOX)
+    - **Visual:** Foto frente a cámara con espacio superior despejado.
+    - **Texto en Pantalla:** "[Invita a que escriban su duda específica]"
+    - **Sticker Interactivo:** Caja de Preguntas (Question Box).
+      - Placeholder del Sticker: "[Cuéntame tu mayor duda con X...]"
+    - **Acción del Setter:** [Cómo responder públicamente y llevarlo al privado]
+
+    ## HISTORIA 5: EL PUENTE DE CONVERSIÓN (LLAMADO A LA ACCIÓN FINAL)
+    - **Visual:** Reel corto o carátula de alto contraste.
+    - **Texto en Pantalla:** "[Ofrecimiento del activo/solución para resolver lo votado en las historias anteriores]"
+    - **Sticker Interactivo:** Sticker de Mensaje Directo o Reacción Rápida.
+    - **Llamado a la Acción (CTA):** "Toca aquí o responde con la palabra '[CLAVE]' y te envío el diagnóstico / recurso."
+    ==================================================
     """
     try:
         return generate_ai_text(prompt)
     except Exception as e:
-        print(f"Error generando engagement poll: {e}")
+        print(f"Error generando dinamica de engagement: {e}")
         return None
-
-
 def generate_profile_magnet_logic(niche: str, transformation: str, lead_magnet: str):
     prompt = f"""
     Eres un consultor de optimización de biografías de Instagram de alta conversión.
@@ -599,64 +650,50 @@ def get_post_details(url: str):
 
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
     is_resource = "Arsenal" in highlight_title or "Lead Magnet" in highlight_title or "Recurso" in highlight_title
+    is_engagement = "Engagement" in highlight_title or "Encuestas" in highlight_title or "Laboratorio" in highlight_title
 
     if is_resource:
         prompt = f"""
         Eres un Director de Arte de Producto Digital y Mockups 3D experto en Midjourney v6.1 y Canva.
-        Analiza el siguiente documento de recurso descargable y genera la SUITE DE PROMPTS MULTIMEDIA PARA PROMOCIONAR Y VENDER ESTE RECURSO.
-
+        Genera la SUITE DE PROMPTS MULTIMEDIA PARA PROMOCIONAR Y VENDER ESTE RECURSO.
         DOCUMENTO BASE:
         {script_content}
+        (Generar Mockup 3D principal, Bundle Digital promocional y Ficha técnica de maquetación en Canva).
+        """
+    elif is_engagement:
+        prompt = f"""
+        Eres un Director de Arte y Creador de Contenido Vertical experto en Google Veo 3.1, Runway Gen-3 y Canva para Instagram Stories.
+        Transforma esta SECUENCIA DE ENGAGEMENT en PROMPTS TÉCNICOS DE PRODUCCIÓN 1 A 1 para cada una de las 5 Historias.
 
-        REGLAS DE GENERACIÓN PARA RECURSOS Y LEAD MAGNETS:
-        1. PROMPT DE MOCKUP 3D / COVER (Midjourney v6.1):
-           - En INGLÉS cinematográfico y comercial: Dispositivo iPad Pro o Workbook impreso de lujo flotando en escritorio ejecutivo de madera oscura o mármol minimalista, luz suave de estudio (softbox), estética moderna corporativa B2B, alta fidelidad visual.
-           - Textos en la carátula: Especificar tipografía con el título real en español entre comillas.
-           - Parámetros: --ar 16:9 o --ar 9:16 --v 6.1 --style raw.
-        2. PROMPT DE CREATIVO PROMOCIONAL (Midjourney v6.1):
-           - Visual para anuncio o post orgánico mostrando el recurso como un descargable irresistible (laptop + tablet bundle mockup, dark mode UI).
-        3. GUÍA DE MAQUETACIÓN CANVA / INDESIGN (En Español):
-           - Paleta de colores recomendada (hexadecimales).
-           - Tipografía de títulos y cuerpo.
-           - Estructura de láminas: Portada, Índice visual, Hojas de trabajo internas y Contraportada con llamada a la acción para agendar.
+        SECUENCIA DE ENTRADA:
+        {script_content}
 
-        FORMATO DE SALIDA:
+        REGLAS TÉCNICAS:
+        1. Para historias en video (Veo 3.1 / Runway):
+           - Aspecto 9:16 vertical, lente 35mm f/1.8, sujeto hablando a cámara o encuadre de trabajo.
+           - ZONA SEGURA: Especificar encuadre medio/cerrado con tercio superior despejado y centro libre para albergar el sticker interactivo de Instagram.
+           - Diálogo Íntegro: En español neutro sincronizado ('saying: "[texto]"').
+        2. Para historias gráficas (Canva):
+           - Especificar paleta oscura (#0F172A), tipografía legible grande y área delimitada para el sticker de encuesta/cuestionario.
+
+        FORMATO POR CADA HISTORIA:
         ==================================================
-        ## SUITE MULTIMEDIA: LEAD MAGNET / WORKBOOK
-        ### 1. MOCKUP 3D PRINCIPAL (Midjourney v6.1)
-        - **Uso:** Carátula principal y prueba visual para redes sociales.
-        - **Prompt Técnico (Inglés):**
-          "[Prompt detallado en inglés con el título del recurso entre comillas --ar 9:16 --v 6.1]"
-
-        ### 2. BUNDLE DIGITAL / ANUNCIO PROMOCIONAL (Midjourney v6.1)
-        - **Uso:** Imagen de conversión para stories y feeds.
-        - **Prompt Técnico (Inglés):**
-          "[Prompt detallado de mockup con múltiples dispositivos y hojas de trabajo --ar 9:16 --v 6.1]"
-
-        ### 3. FICHA TÉCNICA DE MAQUETACIÓN (Canva / PDF)
-        - **Paleta de Colores:** Fondo principal (#0F172A), Contraste (#1E293B), Acento de Acción (#0284C7).
-        - **Tipografía:** Títulos en Sans-Serif geométrica en negrita, cuerpo legible.
-        - **Estructura de Páginas:**
-          - Pág 1: Portada de alto impacto con título y autor.
-          - Pág 2 a 5: Desarrollo de pasos con recuadros destacados de "Acción Inmediata".
-          - Pág Final: Tarjeta de invitación a llamada de auditoría técnica.
+        ## HISTORIA X: [TÍTULO Y TIPO DE STICKER]
+        - **Formato:** Video Veo 3.1 (9:16) / Gráfico Canva (9:16)
+        - **Prompt Técnico de Producción (Inglés cinematográfico):**
+          "[Prompt en inglés con diálogo o textos entre comillas en español neutro]"
+        - **Directiva de Montaje en Instagram / Canva:**
+          - Tipo de Sticker: [Encuesta / Slider / Quiz / Caja de Preguntas]
+          - Posición recomendada: [Centro / Tercio Inferior / Lateral]
         ==================================================
         """
     else:
         prompt = f"""
-        Eres un Director de Arte y Prompt Engineer especializado en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
+        Eres un Director de Arte y Prompt Engineer para Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
         Transforma el siguiente guion en prompts técnicos de producción 1 a 1.
-
         ORIGEN: {highlight_title}
         GUION:
         {script_content}
-
-        REGLAS:
-        - Video (Veo 3.1): Dirección visual en inglés (35mm lens, modern office, bokeh, 9:16) y audio íntegro verbatim en español neutro ('saying: \"[texto exacto]\"').
-        - Imágenes (Midjourney v6.1): Prompt técnico en inglés con textos entre comillas en español (--ar 9:16 --v 6.1).
-        - Canva: Ficha de montaje y textos en pantalla en español.
-
-        Genera la lista numerada por cada pieza o historia.
         """
 
     try:
