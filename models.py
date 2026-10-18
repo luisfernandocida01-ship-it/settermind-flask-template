@@ -14,6 +14,9 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     analyses = relationship('Analysis', back_populates='owner')
     strategies = relationship('Strategy', back_populates='owner')
@@ -30,6 +33,9 @@ class ApiKey(Base):
     monthly_limit = Column(Integer, default=1000)
     current_usage = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='api_keys')
@@ -39,6 +45,9 @@ class Analysis(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     post_url = Column(String, nullable=True, default='')
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     result_data = Column(JSON, nullable=False)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='analyses')
@@ -52,6 +61,9 @@ class Strategy(Base):
     hashtags = Column(JSON, nullable=False)
     saved_posts = Column(JSON, default=list)  # <-- Almacén de posts calificados
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='strategies')
 
@@ -69,6 +81,9 @@ class OutboxItem(Base):
     comment_id = Column(String(100), default="", nullable=True)
     comment_url = Column(String(500), default="", nullable=True)  # <--- Agregar esta línea
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='outbox_items')
 
@@ -82,5 +97,8 @@ class Conversation(Base):
     comment_url = Column(String(500), default="", nullable=True)
     exported = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    plan_tier = Column(String(20), default="basic", nullable=False)
+    monthly_generations_count = Column(Integer, default=0, nullable=False)
+    last_usage_reset = Column(DateTime, default=datetime.utcnow, nullable=False)
     owner_id = Column(String(36), ForeignKey('users.id'), nullable=False)
     owner = relationship('User', back_populates='conversations')

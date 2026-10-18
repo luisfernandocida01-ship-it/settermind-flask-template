@@ -29,6 +29,35 @@ from logic import (
     generate_profile_magnet_logic,
 )
 
+
+# --- CONTROL DE CUOTAS Y PLANES (EJE 1) ---
+def verify_and_increment_usage(user: User, db: Session, feature_type: str = "content"):
+    from datetime import datetime, timedelta
+    
+    # 1. Resetear contador si pasaron más de 30 días
+    if not user.last_usage_reset or (datetime.utcnow() - user.last_usage_reset) > timedelta(days=30):
+        user.monthly_generations_count = 0
+        user.last_usage_reset = datetime.utcnow()
+    
+    tier = (user.plan_tier or "basic").lower()
+    
+    # 2. Regla para Prompts Multimedia: Exclusivo Plan Pro y Plus
+    if feature_type == "multimedia" and tier == "basic":
+        raise HTTPException(
+            status_code=403, 
+            detail="La generación de Prompts Multimedia avanzados (Veo 3.1 & Midjourney) es exclusiva del Plan Pro y Plus. Actualiza tu plan para desbloquear esta función."
+        )
+    
+    # 3. Límite mensual para Plan Basic (30 generaciones / mes)
+    if tier == "basic" and (user.monthly_generations_count or 0) >= 30:
+        raise HTTPException(
+            status_code=429, 
+            detail="Has alcanzado el límite de 30 generaciones mensuales de tu Plan Basic. Actualiza a Plan Pro para obtener generaciones ilimitadas."
+        )
+        
+    user.monthly_generations_count = (user.monthly_generations_count or 0) + 1
+    db.commit()
+
 # --- CONFIGURACIÓN DE ENTORNO ---
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./setter_mind.db")
 # Compatibilidad para URLs de Postgres en Render (postgres:// -> postgresql://)
@@ -673,7 +702,8 @@ def export_conversation(convo_id: str, current_user: User = Depends(get_current_
 
 
 @app.post("/api/generate-multimedia-prompts")
-def api_generate_multimedia_prompts(req: MultimediaPromptsRequest, current_user: User = Depends(get_current_user)):
+def api_generate_multimedia_prompts(req: MultimediaPromptsRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_and_increment_usage(current_user, db, "multimedia")
     from logic import generate_multimedia_prompts_logic
     res = generate_multimedia_prompts_logic(req.highlight_title, req.script_content)
     if not res:
@@ -681,7 +711,8 @@ def api_generate_multimedia_prompts(req: MultimediaPromptsRequest, current_user:
     return {"result": res if isinstance(res, str) else json.dumps(res, indent=2, ensure_ascii=False)}
 
 @app.post("/api/generate-highlights")
-def api_generate_highlights(req: HighlightsRequest, current_user: User = Depends(get_current_user)):
+def api_generate_highlights(req: HighlightsRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_and_increment_usage(current_user, db, "content")
     res = generate_highlights_logic(req.name, req.mission, req.method_name, req.result_example)
     if not res:
         raise HTTPException(status_code=500, detail="Error al generar highlights.")
