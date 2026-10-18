@@ -906,3 +906,4 @@ def set_user_plan_admin(email: str, tier: str, secret: str = "", db: Session = D
     user.plan_tier = tier.lower()
     db.commit()
     return {"status": "ok", "email": user.email, "plan_tier": user.plan_tier}
+# trigger redeploy admin plan
