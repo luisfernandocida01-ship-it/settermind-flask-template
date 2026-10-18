@@ -451,22 +451,49 @@ def generate_content_ideas_logic(topic: str):
         return None
 def generate_lead_magnet_logic(resource_type: str):
     prompt = f"""
-    Eres un especialista en embudos orgánicos para Setters.
-    Estructura un Lead Magnet irresistible del tipo: '{resource_type}'.
-    
-    Incluye:
-    - Título gancho de alta conversión.
-    - Promesa única de valor.
-    - Esquema de 3 a 5 puntos clave que debe contener.
-    - Mensaje sugerido para entregarlo por mensaje privado (DM).
+    Actúa como Arquitecto de Ofertas y Estratega de Lead Magnets para Setters y Consultores B2B/High-Ticket.
+    Diseña una estructura completa y ejecutable para el recurso: '{resource_type}'.
+
+    OBJETIVO:
+    Crear un activo de alto valor percibido que sirva como "moneda de cambio" para que el prospecto comente una palabra clave y el Setter inicie una conversación de venta consultiva en DM.
+
+    REGLAS:
+    - CERO relleno teórico ni explicaciones enciclopédicas.
+    - Enfoque pragmático: plantillas, auditorías, checklists, frameworks o guías paso a paso.
+    - Tono profesional, directo y consultivo en español neutro.
+
+    FORMATO OBLIGATORIO DE SALIDA:
+    ==================================================
+    # ARSENAL DE RECURSO: [TÍTULO CORTO Y MAGNÉTICO]
+    - **Tipo de Activo:** [Checklist Operativo / Framework PDF / Plantilla Notion / Hoja de Cálculo / Mini-Guía de 3 a 5 Fases]
+    - **Promesa Específica:** [Resultado concreto que el usuario obtiene tras implementarlo]
+    - **Palabra Clave para Comentar (CTA):** [Ej: 'GUIA', 'SISTEMA', 'RUTA']
+
+    ## 1. ESTRUCTURA Y CONTENIDO DEL ACTIVO (QUÉ DEBE CONTENER)
+    - **Fase / Módulo 1:** [Nombre y contenido táctico con herramientas concretas]
+    - **Fase / Módulo 2:** [Nombre y contenido táctico]
+    - **Fase / Módulo 3:** [Nombre y contenido táctico]
+    - **Fase / Módulo 4 (Opcional):** [Nombre y contenido táctico]
+    - **Punto de Cierre del Recurso:** [Llamado a la acción dentro del propio PDF/documento para agendar auditoría con el equipo]
+
+    ## 2. COPY DE DIFUSIÓN ORGÁNICA (HISTORIAS O REEL)
+    - **Hook en Pantalla (3 seg):** "[Texto corto de impacto visual]"
+    - **Texto / Copy para Caption o Historia:** "[Mensaje directo al dolor del cliente, invitando a comentar la palabra clave]"
+
+    ## 3. SECUENCIA DE CONVERSACIÓN PARA EL SETTER (CHAT DM)
+    - **Mensaje 1 (Entrega inmediata sin rodeos):**
+      "¡Hola [Nombre]! Aquí tienes el acceso directo al recurso: [Enlace]. Te recomiendo revisar especialmente la fase [X]."
+    - **Mensaje 2 (Pregunta de Cualificación / Diagnóstico 24h después):**
+      "[Pregunta abierta estratégica para identificar si tiene el problema que resolvemos y validar si califica para llamada/servicio]"
+    - **Mensaje 3 (Transición a Llamada de Diagnóstico):**
+      "[Propuesta de llamada de 15 minutos basada en la respuesta del prospecto]"
+    ==================================================
     """
     try:
         return generate_ai_text(prompt)
     except Exception as e:
         print(f"Error generando lead magnet: {e}")
         return None
-
-
 def generate_engagement_poll_logic(question: str):
     prompt = f"""
     Diseña una dinámica de historias de Instagram para abrir conversaciones de prospección a partir de esta pregunta/tema: '{question}'.
