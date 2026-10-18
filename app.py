@@ -353,8 +353,33 @@ def login_user(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales inválidas.")
-    access_token = create_access_token(data={"sub": db_user.id})
-    return {"token": access_token}
+    
+    tier = (db_user.plan_tier or "basic").lower()
+    access_token = create_access_token(data={
+        "sub": str(db_user.id),
+        "email": db_user.email,
+        "plan_tier": tier
+    })
+    return {
+        "token": access_token,
+        "user": {
+            "id": str(db_user.id),
+            "username": db_user.username,
+            "email": db_user.email,
+            "plan_tier": tier,
+            "monthly_generations_count": db_user.monthly_generations_count or 0
+        }
+    }
+
+@app.get("/api/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "email": current_user.email,
+        "plan_tier": (current_user.plan_tier or "basic").lower(),
+        "monthly_generations_count": current_user.monthly_generations_count or 0
+    }
 
 @app.post("/api/prospect")
 def prospect_posts(req: ProspectRequest, current_user: User = Depends(get_current_user)):
