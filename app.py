@@ -871,3 +871,26 @@ def add_post_to_strategy(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))
+
+@app.get("/api/admin-migrate-db")
+def run_db_migration(secret: str = ""):
+    if secret != "SetterMind2026Migrate":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    from sqlalchemy import text
+    results = []
+    with engine.connect() as conn:
+        commands = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'basic';",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"
+        ]
+        for cmd in commands:
+            try:
+                conn.execute(text(cmd))
+                conn.commit()
+                results.append(f"Éxito: {cmd}")
+            except Exception as e:
+                results.append(f"Nota/Error: {cmd} -> {str(e)}")
+                
+    return {"status": "completado", "detalles": results}
