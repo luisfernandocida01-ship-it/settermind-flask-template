@@ -564,29 +564,43 @@ def generate_engagement_poll_logic(question: str):
         return None
 def generate_profile_magnet_logic(niche: str, transformation: str, lead_magnet: str):
     prompt = f"""
-    Eres un consultor de optimización de biografías de Instagram de alta conversión.
-    
-    DATOS:
-    - Nicho: {niche}
-    - Transformación: {transformation}
-    - Lead Magnet / Recurso: {lead_magnet or 'Guía Gratuita'}
-    
-    Genera un objeto en formato JSON con dos claves obligatorias: "bio" y "cta".
-    "bio": Una biografía estructurada en 3 o 4 líneas con emojis.
-    "cta": Un llamado a la acción persuasivo hacia el DM o enlace de la bio.
-    
-    FORMATO JSON OBLIGATORIO:
+    Actúa como Especialista en Optimización de Perfiles de Instagram y Conversión Orgánica para Setters y Consultores High-Ticket.
+    Diseña una estructura integral de "Perfil Magnético" de alta conversión para los siguientes datos:
+    - Nicho / Audiencia objetivo: {niche}
+    - Transformación o Resultado concreto: {transformation}
+    - Recurso Gratuito o Lead Magnet: {lead_magnet}
+
+    REGLAS ESTRICTAS DE FORMATEO:
+    1. 'name_seo': Nombre en negrita de Instagram. Máximo 30 caracteres. Incluye nombre o rol y palabra clave indexable (ej: "Luis | Consultor Ventas IA").
+    2. 'bio': Biografía vertical con saltos de línea. OBLIGATORIO: El texto total debe tener MENOS DE 150 CARACTERES (incluyendo espacios y saltos de línea).
+       - Línea 1: A quién ayudas y resultado.
+       - Línea 2: Método o autoridad.
+       - Línea 3: CTA con palabra clave para el Lead Magnet.
+    3. 'cta_link': Texto para invitar a tocar el enlace de la bio o enviar DM con la palabra clave.
+    4. 'highlight_covers': Array con 5 nombres concisos (máximo 10 caracteres cada uno) para las historias destacadas fijas.
+    5. 'avatar_prompt': Prompt fotográfico en inglés para Midjourney v6.1 (--ar 1:1 --v 6.1) para generar un avatar ejecutivo/consultor moderno, mirada directa, iluminación cinematográfica suave.
+
+    SALIDA EXCLUSIVA EN JSON VÁLIDO:
+    Responde ÚNICAMENTE con el objeto JSON sin bloques markdown adicionales fuera de él:
     {{
-      "bio": "Texto de la biografía",
-      "cta": "Texto del llamado a la acción"
+      "name_seo": "...",
+      "bio": "...",
+      "cta_link": "...",
+      "highlight_covers": ["EMPIEZA", "MÉTODO", "CASOS", "RECURSOS", "AGENDAR"],
+      "avatar_prompt": "..."
     }}
     """
     try:
-        return generate_ai_json(prompt)
+        raw_res = generate_ai_text(prompt)
+        import json, re
+        # Extraer JSON limpio si viene rodeado de markdown
+        json_match = re.search(r"\{.*\}", raw_res, re.DOTALL)
+        if json_match:
+            return json_match.group(0)
+        return raw_res
     except Exception as e:
         print(f"Error generando perfil magnético: {e}")
         return None
-
 def get_post_details(url: str):
     """
     Usa Apify para obtener detalles del post y OpenAI para analizar el perfil del autor.
