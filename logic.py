@@ -451,42 +451,43 @@ def generate_content_ideas_logic(topic: str):
         return None
 def generate_lead_magnet_logic(resource_type: str):
     prompt = f"""
-    Actúa como Arquitecto de Ofertas y Estratega de Lead Magnets para Setters y Consultores B2B/High-Ticket.
-    Diseña una estructura completa y ejecutable para el recurso: '{resource_type}'.
+    Actúa como Consultor Senior y Arquitecto de Contenidos High-Ticket.
+    Tu objetivo es redactar el CONTENIDO COMPLETO Y DESARROLLADO de un Lead Magnet operativo sobre: '{resource_type}'.
 
-    OBJETIVO:
-    Crear un activo de alto valor percibido que sirva como "moneda de cambio" para que el prospecto comente una palabra clave y el Setter inicie una conversación de venta consultiva en DM.
+    REGLAS DE DESARROLLO (CERO RESÚMENES NI ÍNDICES VACÍOS):
+    - No te limites a enumerar pasos: redacta las explicaciones técnicas, ejemplos concretos y pasos de acción de cada sección.
+    - El documento debe ser un activo listo para que el usuario lo copie, maquete en Canva/Notion/PDF y lo entregue a sus prospectos con valor inmediato.
+    - Tono profesional, práctico y consultivo en español neutro.
 
-    REGLAS:
-    - CERO relleno teórico ni explicaciones enciclopédicas.
-    - Enfoque pragmático: plantillas, auditorías, checklists, frameworks o guías paso a paso.
-    - Tono profesional, directo y consultivo en español neutro.
-
-    FORMATO OBLIGATORIO DE SALIDA:
+    ESTRUCTURA COMPLETA DEL ENTREGABLE:
     ==================================================
-    # ARSENAL DE RECURSO: [TÍTULO CORTO Y MAGNÉTICO]
-    - **Tipo de Activo:** [Checklist Operativo / Framework PDF / Plantilla Notion / Hoja de Cálculo / Mini-Guía de 3 a 5 Fases]
-    - **Promesa Específica:** [Resultado concreto que el usuario obtiene tras implementarlo]
-    - **Palabra Clave para Comentar (CTA):** [Ej: 'GUIA', 'SISTEMA', 'RUTA']
+    # DOCUMENTO MAESTRO: [TÍTULO IMPACTANTE DEL RECURSO]
+    - **Formato:** Guía Táctica / Workbook / SOP de Implementación
+    - **Promesa Central:** [Resultado específico medible]
+    - **Palabra Clave (CTA para DM):** [Ej: 'SISTEMA', 'GUIA', 'PASOAPASO']
 
-    ## 1. ESTRUCTURA Y CONTENIDO DEL ACTIVO (QUÉ DEBE CONTENER)
-    - **Fase / Módulo 1:** [Nombre y contenido táctico con herramientas concretas]
-    - **Fase / Módulo 2:** [Nombre y contenido táctico]
-    - **Fase / Módulo 3:** [Nombre y contenido táctico]
-    - **Fase / Módulo 4 (Opcional):** [Nombre y contenido táctico]
-    - **Punto de Cierre del Recurso:** [Llamado a la acción dentro del propio PDF/documento para agendar auditoría con el equipo]
+    ---
+    ## INTRODUCCIÓN Y DIAGNÓSTICO
+    [Texto introductorio de 2 párrafos exponiendo el quiebre de creencia del sector y la metodología que soluciona el problema]
 
-    ## 2. COPY DE DIFUSIÓN ORGÁNICA (HISTORIAS O REEL)
-    - **Hook en Pantalla (3 seg):** "[Texto corto de impacto visual]"
-    - **Texto / Copy para Caption o Historia:** "[Mensaje directo al dolor del cliente, invitando a comentar la palabra clave]"
+    ## DESARROLLO ÍNTEGRO DEL RECURSO (PASO A PASO EXHAUSTIVO)
+    [Desarrolla detalladamente de 5 a 7 pasos o fases. Para CADA PASO incluye:
+     1. Objetivo Táctico.
+     2. Qué hacer paso a paso (instrucción procedimental real).
+     3. Herramientas o prompts recomendados.
+     4. Ejemplo de aplicación práctica o caso concreto.]
 
-    ## 3. SECUENCIA DE CONVERSACIÓN PARA EL SETTER (CHAT DM)
-    - **Mensaje 1 (Entrega inmediata sin rodeos):**
-      "¡Hola [Nombre]! Aquí tienes el acceso directo al recurso: [Enlace]. Te recomiendo revisar especialmente la fase [X]."
-    - **Mensaje 2 (Pregunta de Cualificación / Diagnóstico 24h después):**
-      "[Pregunta abierta estratégica para identificar si tiene el problema que resolvemos y validar si califica para llamada/servicio]"
+    ## CONCLUSIÓN Y SIGUIENTE PASO ESTRATÉGICO
+    [Cierre del documento con llamado a la acción para agendar una sesión de auditoría o diagnóstico 1 a 1 para implementar el sistema]
+
+    ---
+    ## SECUENCIA DE CONVERSIÓN PARA EL SETTER (CHAT DM)
+    - **Mensaje 1 (Entrega inmediata del link):**
+      "¡Hola [Nombre]! Aquí tienes el acceso a [Nombre del Recurso]: [Enlace]. Te recomiendo revisar directo el paso [X] que es donde la mayoría se traba."
+    - **Mensaje 2 (Calificación / Seguimiento a las 24h):**
+      "[Pregunta de diagnóstico sobre la fase más crítica del documento]"
     - **Mensaje 3 (Transición a Llamada de Diagnóstico):**
-      "[Propuesta de llamada de 15 minutos basada en la respuesta del prospecto]"
+      "[Propuesta consultiva para revisar sus números en una sesión de 15 min]"
     ==================================================
     """
     try:
@@ -597,42 +598,67 @@ def get_post_details(url: str):
 
 
 def generate_multimedia_prompts_logic(highlight_title: str, script_content: str):
-    prompt = f"""
-    Eres un Director de Arte y Prompt Engineer de élite especializado en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
-    Transforma el siguiente contenido en una SUITE TÉCNICA DE PRODUCCIÓN 1 A 1.
+    is_resource = "Arsenal" in highlight_title or "Lead Magnet" in highlight_title or "Recurso" in highlight_title
 
-    ORIGEN / CONTEXTO:
-    {highlight_title}
+    if is_resource:
+        prompt = f"""
+        Eres un Director de Arte de Producto Digital y Mockups 3D experto en Midjourney v6.1 y Canva.
+        Analiza el siguiente documento de recurso descargable y genera la SUITE DE PROMPTS MULTIMEDIA PARA PROMOCIONAR Y VENDER ESTE RECURSO.
 
-    CONTENIDO BASE A PROCESAR:
-    {script_content}
+        DOCUMENTO BASE:
+        {script_content}
 
-    ESTÁNDAR DE IDIOMA Y REGLAS TÉCNICAS OBLIGATORIAS:
-    1. PROMPTS DE VIDEO (Google Veo 3.1 / Runway Gen-3):
-       - Descripción visual, cinemática y técnica: 100% EN INGLÉS PROFESIONAL (subject description, 35mm lens, f/1.8, shallow depth of field, modern executive workspace, diffused soft daylight, 4k resolution, vertical 9:16 aspect ratio).
-       - Audio, Locución y Lip Sync: ESPECIFICAR EN ESPAÑOL NEUTRO con el diálogo ÍNTEGRO extraído del guion (sin recortar ni resumir):
-         `...speaking directly to camera with fluid natural cadence in clear neutral Latin American Spanish, saying: "[Texto completo en español extraído del guion]". Lip sync synchronized.`
-       - Si es B-Roll: Descripción de planos en inglés y locución en off (voiceover) en español neutro.
+        REGLAS DE GENERACIÓN PARA RECURSOS Y LEAD MAGNETS:
+        1. PROMPT DE MOCKUP 3D / COVER (Midjourney v6.1):
+           - En INGLÉS cinematográfico y comercial: Dispositivo iPad Pro o Workbook impreso de lujo flotando en escritorio ejecutivo de madera oscura o mármol minimalista, luz suave de estudio (softbox), estética moderna corporativa B2B, alta fidelidad visual.
+           - Textos en la carátula: Especificar tipografía con el título real en español entre comillas.
+           - Parámetros: --ar 16:9 o --ar 9:16 --v 6.1 --style raw.
+        2. PROMPT DE CREATIVO PROMOCIONAL (Midjourney v6.1):
+           - Visual para anuncio o post orgánico mostrando el recurso como un descargable irresistible (laptop + tablet bundle mockup, dark mode UI).
+        3. GUÍA DE MAQUETACIÓN CANVA / INDESIGN (En Español):
+           - Paleta de colores recomendada (hexadecimales).
+           - Tipografía de títulos y cuerpo.
+           - Estructura de láminas: Portada, Índice visual, Hojas de trabajo internas y Contraportada con llamada a la acción para agendar.
 
-    2. PROMPTS DE IMAGEN / MOCKUPS (Midjourney v6.1 / Flux):
-       - Estilo visual, iluminación, entorno y render: 100% EN INGLÉS (editorial design, modern luxury dark UI, matte texture, studio lighting, --ar 9:16 --v 6.1).
-       - Texto que debe ir incrustado o visible en la imagen: EN ESPAÑOL EXACTO entre comillas (ejemplo: `bold typography saying "Texto en Español", minimal layout...`).
+        FORMATO DE SALIDA:
+        ==================================================
+        ## SUITE MULTIMEDIA: LEAD MAGNET / WORKBOOK
+        ### 1. MOCKUP 3D PRINCIPAL (Midjourney v6.1)
+        - **Uso:** Carátula principal y prueba visual para redes sociales.
+        - **Prompt Técnico (Inglés):**
+          "[Prompt detallado en inglés con el título del recurso entre comillas --ar 9:16 --v 6.1]"
 
-    3. ESPECIFICACIONES DE MONTAJE Y CANVA:
-       - 100% EN ESPAÑOL (textos en pantalla de los primeros 3 segundos, llamado a la acción, paleta institucional #0F172A, #1E293B, #0284C7, y zona libre para stickers de interacción).
+        ### 2. BUNDLE DIGITAL / ANUNCIO PROMOCIONAL (Midjourney v6.1)
+        - **Uso:** Imagen de conversión para stories y feeds.
+        - **Prompt Técnico (Inglés):**
+          "[Prompt detallado de mockup con múltiples dispositivos y hojas de trabajo --ar 9:16 --v 6.1]"
 
-    FORMATO OBLIGATORIO POR CADA PIEZA O HISTORIA:
-    ==================================================
-    ## [IDENTIFICADOR: HIGHLIGHT X O IDEA Y] › [TÍTULO]
-    - **Formato:** [Reel Cara a Cámara (9:16) / B-Roll Cinematográfico (9:16) / Carrusel Técnico (9:16)]
-    - **Prompt Técnico (Veo 3.1 / Midjourney):**
-      "[Prompt técnico en inglés cinematográfico con los textos o diálogos verbatim en español]"
-    - **Ficha de Montaje (Canva / Edición):**
-      - Texto en pantalla (primeros 3s): "[Texto en español]"
-      - Llamado a la acción (CTA): "[Texto en español]"
-      - Disparador / Nota técnica: [Recomendación de sticker o lámina]
-    ==================================================
-    """
+        ### 3. FICHA TÉCNICA DE MAQUETACIÓN (Canva / PDF)
+        - **Paleta de Colores:** Fondo principal (#0F172A), Contraste (#1E293B), Acento de Acción (#0284C7).
+        - **Tipografía:** Títulos en Sans-Serif geométrica en negrita, cuerpo legible.
+        - **Estructura de Páginas:**
+          - Pág 1: Portada de alto impacto con título y autor.
+          - Pág 2 a 5: Desarrollo de pasos con recuadros destacados de "Acción Inmediata".
+          - Pág Final: Tarjeta de invitación a llamada de auditoría técnica.
+        ==================================================
+        """
+    else:
+        prompt = f"""
+        Eres un Director de Arte y Prompt Engineer especializado en Google Veo 3.1, Runway Gen-3, Midjourney v6.1 y Canva.
+        Transforma el siguiente guion en prompts técnicos de producción 1 a 1.
+
+        ORIGEN: {highlight_title}
+        GUION:
+        {script_content}
+
+        REGLAS:
+        - Video (Veo 3.1): Dirección visual en inglés (35mm lens, modern office, bokeh, 9:16) y audio íntegro verbatim en español neutro ('saying: \"[texto exacto]\"').
+        - Imágenes (Midjourney v6.1): Prompt técnico en inglés con textos entre comillas en español (--ar 9:16 --v 6.1).
+        - Canva: Ficha de montaje y textos en pantalla en español.
+
+        Genera la lista numerada por cada pieza o historia.
+        """
+
     try:
         return generate_ai_text(prompt)
     except Exception as e:
