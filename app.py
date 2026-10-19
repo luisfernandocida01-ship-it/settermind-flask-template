@@ -10,7 +10,26 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta, timezone
 import jwt
-from pydantic import BaseModel
+
+from typing import List, Optional, Any, Dict
+from pydantic import BaseModel, Field
+
+class AddPostToStrategy(BaseModel):
+    post_url: Optional[str] = None
+    caption: Optional[str] = ""
+    author: Optional[str] = ""
+    comments_count: Optional[int] = 0
+    likes_count: Optional[int] = 0
+    relevance_score: Optional[int] = 8
+    notes: Optional[str] = ""
+
+class StrategyCreate(BaseModel):
+    niche: str
+    avatar: str
+    keywords: Optional[List[str]] = []
+    hashtags: Optional[List[str]] = []
+
+# original imports:
 from typing import Any, Optional
 import bcrypt
 from mailer import send_welcome_email
