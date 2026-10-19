@@ -869,12 +869,20 @@ def add_post_to_strategy(
         caption = payload.get("caption") or payload.get("text") or payload.get("caption_text") or ""
         post_url = payload.get("post_url") or payload.get("url") or payload.get("link") or ""
 
+        clean_author = f"@{author}" if not author.startswith("@") else author
+        num_likes = int(likes) if str(likes).isdigit() else 0
+        num_comments = int(comments) if str(comments).isdigit() else 0
+
         post_record = {
             "post_url": post_url,
+            "url": post_url,
             "caption": caption,
-            "author": f"@{author}" if not author.startswith("@") else author,
-            "comments_count": int(comments) if str(comments).isdigit() else 0,
-            "likes_count": int(likes) if str(likes).isdigit() else 0,
+            "author": clean_author,
+            "ownerUsername": clean_author.replace("@", ""),
+            "comments_count": num_comments,
+            "commentsCount": num_comments,
+            "likes_count": num_likes,
+            "likesCount": num_likes,
             "relevance_score": int(payload.get("relevance_score") or payload.get("relevanceScore") or 8),
             "notes": payload.get("notes") or ""
         }
