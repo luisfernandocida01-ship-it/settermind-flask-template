@@ -907,3 +907,43 @@ def set_user_plan_admin(email: str, tier: str, secret: str = "", db: Session = D
     db.commit()
     return {"status": "ok", "email": user.email, "plan_tier": user.plan_tier}
 # trigger redeploy admin plan
+
+
+@app.get("/api/admin-fix-tables")
+def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
+    if secret != "SetterMind2026Migrate":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    # 1. Asegurar create_all de todas las tablas declaradas
+    Base.metadata.create_all(bind=engine)
+    
+    results = ["Base.metadata.create_all ejecutado."]
+    
+    # 2. Agregar columnas faltantes en outbox_items si la tabla ya existia
+    columns = [
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS post_url TEXT;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS prospect_username VARCHAR(100);",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS prospect_comment TEXT;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS selected_opener TEXT;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS identified_pain TEXT;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 8;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS notes TEXT;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS comment_id VARCHAR(100);",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS comment_url TEXT;",
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS saved_posts JSONB;"
+    ]
+    
+    from sqlalchemy import text
+    for col in columns:
+        try:
+            db.execute(text(col))
+            db.commit()
+            results.append(f"Exito: {col}")
+        except Exception as e:
+            db.rollback()
+            results.append(f"Nota: {col} -> {str(e)}")
+            
+    return {"status": "tablas_reparadas", "detalles": results}
