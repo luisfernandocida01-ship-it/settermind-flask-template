@@ -26,8 +26,6 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
     escaped_name = html.escape(buyer_name or "Setter")
     escaped_key = html.escape(raw_api_key)
     escaped_link = html.escape(magic_link, quote=True)
-    
-    # Marcador sutil para evitar colapso de hilo en Gmail durante pruebas sucesivas
     timestamp_mark = str(int(time.time()))[-4:]
 
     html_content = f"""<!DOCTYPE html>
@@ -42,7 +40,6 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:580px; width:100%; background-color:#111a28; border:1px solid #1e2d42; border-radius:14px; text-align:center;">
       <tr>
         <td style="padding:36px 28px;">
-          
           <!-- Logo M -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto; width:52px; height:52px; background-color:#0e2a47; border:2px solid #d4af37; border-radius:12px;">
             <tr>
@@ -52,7 +49,6 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
             </tr>
           </table>
 
-          <!-- Titular -->
           <h1 style="color:#ffffff !important; font-size:22px; font-weight:bold; margin:0 0 16px 0;">
             ¡Bienvenido a SetterMind AI!
           </h1>
@@ -65,7 +61,7 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
             Para ingresar al instante sin necesidad de recordar contraseñas, utiliza tu enlace de acceso directo seguro:
           </p>
 
-          <!-- Botón Autologin -->
+          <!-- Boton Autologin -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 auto 26px auto;">
             <tr>
               <td align="center" style="background-color:#0284c7; border-radius:8px;">
@@ -76,9 +72,9 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
             </tr>
           </table>
 
-          <!-- Enlace de respaldo -->
+          <!-- Respaldo Link -->
           <p style="color:#64748b !important; font-size:12px; margin:0 0 6px 0; text-align:left;">
-            Si el botón no abre automáticamente, copia este enlace:
+            Si el botón no abre automáticamente, copia este enlace en tu navegador:
           </p>
           <p style="margin:0 0 26px 0; text-align:left;">
             <a href="{escaped_link}" target="_blank" style="color:#38bdf8 !important; font-size:12px; word-break:break-all; text-decoration:underline;">
@@ -86,7 +82,7 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
             </a>
           </p>
 
-          <!-- Credencial API Key contenida en tabla para evitar franja expandida -->
+          <!-- Clave en tabla -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#0c1524; border:1px dashed #1e2d42; border-radius:8px; margin-bottom:24px;">
             <tr>
               <td style="padding:14px 16px; text-align:left;">
@@ -97,7 +93,7 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
                   {escaped_key}
                 </span>
                 <span style="color:#64748b !important; font-size:11px; display:block; line-height:15px;">
-                  Guarda esta clave. Puedes pegarla manualmente en un dispositivo nuevo.
+                  Guarda esta clave. Puedes pegarla manualmente si abres la app en un navegador privado o un dispositivo nuevo.
                 </span>
               </td>
             </tr>
@@ -116,7 +112,6 @@ def send_welcome_email(to_email: str, buyer_name: str, raw_api_key: str) -> obje
               </td>
             </tr>
           </table>
-
         </td>
       </tr>
     </table>
@@ -177,7 +172,6 @@ def send_password_reset_email(to_email: str, buyer_name: str, reset_token: str) 
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:580px; width:100%; background-color:#111a28; border:1px solid #1e2d42; border-radius:14px; text-align:center;">
       <tr>
         <td style="padding:36px 28px;">
-          <!-- Logo M -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto; width:52px; height:52px; background-color:#0e2a47; border:2px solid #d4af37; border-radius:12px;">
             <tr>
               <td align="center" valign="middle" style="color:#f3c969; font-size:26px; font-weight:bold; font-family:Arial, sans-serif;">
@@ -195,10 +189,9 @@ def send_password_reset_email(to_email: str, buyer_name: str, reset_token: str) 
           </p>
 
           <p style="color:#94a3b8 !important; font-size:13px; line-height:20px; margin:0 0 26px 0;">
-            Haz clic en el siguiente botón para definir una nueva contraseña. Este enlace expira en 1 hora:
+            Haz clic en el siguiente botón para definir tu nueva contraseña. Este enlace expira en 1 hora:
           </p>
 
-          <!-- Boton -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 auto 26px auto;">
             <tr>
               <td align="center" style="background-color:#0284c7; border-radius:8px;">
@@ -219,10 +212,9 @@ def send_password_reset_email(to_email: str, buyer_name: str, reset_token: str) 
           </p>
 
           <p style="color:#64748b !important; font-size:11px; margin:0 0 20px 0; text-align:left; line-height:16px;">
-            Si no solicitaste este cambio, puedes ignorar este mensaje; tu contraseña actual continuará siendo segura.
+            Si no solicitaste este cambio, puedes ignorar este mensaje; tu cuenta permanecerá segura.
           </p>
 
-          <!-- Footer -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top:1px solid #1e2d42;">
             <tr>
               <td style="padding-top:20px;">
@@ -243,17 +235,10 @@ def send_password_reset_email(to_email: str, buyer_name: str, reset_token: str) 
 </html>"""
 
     text_content = (
-        f"Hola {buyer_name},
-
-"
-        f"Para restablecer tu contraseña en SetterMind AI, visita este enlace:
-"
-        f"{reset_link}
-
-"
-        f"Este enlace expira en 1 hora. Si no lo solicitaste, puedes ignorar este mensaje.
-
-"
+        f"Hola {buyer_name},\n\n"
+        f"Para restablecer tu contraseña en SetterMind AI, visita este enlace:\n"
+        f"{reset_link}\n\n"
+        f"Este enlace expira en 1 hora.\n\n"
         f"Soporte: servicioalcliente@mentesalmercado.online"
     )
 
