@@ -922,6 +922,17 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
     # 2. Agregar columnas faltantes en outbox_items si la tabla ya existia
     columns = [
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
+
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'basic';",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'basic';",
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS owner_id VARCHAR(36);",
+
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS post_url TEXT;",
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS prospect_username VARCHAR(100);",
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS prospect_comment TEXT;",
