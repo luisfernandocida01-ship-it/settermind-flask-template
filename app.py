@@ -1003,3 +1003,19 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
             results.append(f"Nota: {col} -> {str(e)}")
             
     return {"status": "tablas_reparadas", "detalles": results}
+
+
+@app.get("/api/test-welcome-email")
+def test_welcome_email(secret: str, to: str = "servicioalcliente@mentesalmercado.online"):
+    if secret != "SetterMind2026Migrate":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    try:
+        from mailer import send_welcome_email
+        resp = send_welcome_email(
+            to_email=to,
+            buyer_name="Luis Fernando",
+            raw_api_key="sk_live_test_bulletproof_458643"
+        )
+        return {"status": "success", "response": resp}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error enviando correo: {str(e)}")
