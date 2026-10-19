@@ -1019,3 +1019,71 @@ def test_welcome_email(secret: str, to: str = "servicioalcliente@mentesalmercado
         return {"status": "success", "response": resp}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error enviando correo: {str(e)}")
+
+
+# --- RESTABLECIMIENTO DE CONTRASEÑA ---
+from pydantic import BaseModel
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    target_email = req.email.strip().lower()
+    user = db.query(User).filter(User.email.ilike(target_email)).first()
+    
+    # Por seguridad, no revelar si el correo existe o no, pero si existe enviamos el email
+    if user:
+        # Generar token JWT con 1 hora de expiracion
+        payload = {
+            "sub": str(user.id),
+            "email": user.email,
+            "type": "password_reset",
+            "exp": datetime.utcnow() + timedelta(hours=1)
+        }
+        reset_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        try:
+            from mailer import send_password_reset_email
+            send_password_reset_email(
+                to_email=user.email,
+                buyer_name=user.username or "Setter",
+                reset_token=reset_token
+            )
+        except Exception as e:
+            print(f"[ERROR] Error al despachar correo de reseteo: {e}")
+            raise HTTPException(status_code=500, detail="Error al enviar el correo de recuperación.")
+
+    return {
+        "status": "success",
+        "message": "Si tu correo se encuentra registrado en el sistema, recibirás un enlace de restablecimiento en unos instantes."
+    }
+
+@app.post("/api/auth/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    if not req.new_password or len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres.")
+
+    try:
+        payload = jwt.decode(req.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "password_reset":
+            raise HTTPException(status_code=400, detail="Token no válido para restablecimiento.")
+        user_id = payload.get("sub")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="El enlace ha expirado. Solicita uno nuevo.")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Token inválido o alterado.")
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    # Hashear nueva contraseña y guardar
+    salt = bcrypt.gensalt()
+    user.password_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), salt).decode('utf-8')
+    db.commit()
+
+    return {"status": "success", "message": "Tu contraseña ha sido actualizada exitosamente."}
