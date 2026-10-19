@@ -412,55 +412,61 @@ def prospect_posts(req: ProspectRequest, current_user: User = Depends(get_curren
 
 @app.post("/api/analyze-post")
 def analyze_post(req: AnalyzeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    post_details = get_post_details(req.post_url)
-    if not post_details:
-        raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post.")
-
-    comments = scrape_instagram_comments(req.post_url)
-    if not comments:
-        raise HTTPException(status_code=404, detail="No se encontraron comentarios.")
-    post_caption = ""
-    if isinstance(post_details, dict):
-        post_caption = post_details.get('caption') or (post_details.get('post', {})).get('caption', '')
-    context = {
-        "niche": req.niche,
-        "avatar": req.avatar,
-        "caption": post_caption
-    }
-
-    raw_ai_analysis = analyze_comments_with_ai(comments, context)
-    if not raw_ai_analysis:
-        raise HTTPException(status_code=500, detail="Análisis de IA falló.")
-
     try:
+        post_details = get_post_details(req.post_url)
+        if not post_details:
+            raise HTTPException(status_code=404, detail="No se pudieron obtener los detalles del post. Verifica que el post sea público.")
+
+        comments = scrape_instagram_comments(req.post_url)
+        if not comments:
+            raise HTTPException(status_code=404, detail="No se encontraron comentarios en el post o la cuenta es privada.")
+
+        post_caption = ""
+        if isinstance(post_details, dict):
+            post_caption = post_details.get('caption') or (post_details.get('post', {})).get('caption', '')
+            
+        context = {
+            "niche": req.niche,
+            "avatar": req.avatar,
+            "caption": post_caption
+        }
+
+        raw_ai_analysis = analyze_comments_with_ai(comments, context)
+        if not raw_ai_analysis:
+            raise HTTPException(status_code=500, detail="El análisis de IA no devolvió respuesta.")
+
         if isinstance(raw_ai_analysis, dict):
             ai_results = raw_ai_analysis
         else:
             ai_results = json.loads(raw_ai_analysis)
+
         ai_results['summary'] = f"Analizados {len(comments)} com., IA identificó {len(ai_results.get('leads', []))} prospectos."
         
-        new_analysis = Analysis(
-            post_url=req.post_url,
-            result_data=ai_results,
-            owner_id=current_user.id
-        )
-        db.add(new_analysis)
-        db.commit()
+        try:
+            new_analysis = Analysis(
+                post_url=req.post_url,
+                result_data=ai_results,
+                owner_id=str(current_user.id)
+            )
+            db.add(new_analysis)
+            db.commit()
+            db.refresh(new_analysis)
+            ai_results["id"] = str(new_analysis.id)
+            ai_results["analysis_id"] = str(new_analysis.id)
+        except Exception as db_err:
+            db.rollback()
+            print(f"Advertencia guardando en historial: {db_err}")
+            ai_results["id"] = "temp"
+            ai_results["analysis_id"] = "temp"
 
-        ai_results["id"] = new_analysis.id
-        ai_results["analysis_id"] = new_analysis.id
         return ai_results
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Respuesta de IA no es JSON válido.")
-# Al final de analyze_post en app.py:
-    return {
-        "analysis_id": new_analysis.id,
-        "id": new_analysis.id,
-        "summary": ai_results.get('summary', ''),
-        "leads": ai_results.get('leads', []),
-        "comments": comments,  # <--- RETORNAR LOS COMENTARIOS SCRAPEADOS
-        "post_details": post_details,
-    }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error en análisis: {str(e)}")
 
 @app.get("/api/analysis/{analysis_id}")
 def get_analysis(analysis_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -774,19 +780,30 @@ def create_strategy(
         new_strategy = Strategy(
             niche=strategy_data.niche,
             avatar=strategy_data.avatar,
-            keywords=strategy_data.keywords,
-            hashtags=strategy_data.hashtags,
+            keywords=strategy_data.keywords or [],
+            hashtags=strategy_data.hashtags or [],
             saved_posts=[],
-            owner_id=current_user.id
+            owner_id=str(current_user.id)
         )
         db.add(new_strategy)
         db.commit()
         db.refresh(new_strategy)
-        return {"status": "success", "strategy_id": new_strategy.id}
+        return {
+            "status": "success",
+            "id": str(new_strategy.id),
+            "strategy_id": str(new_strategy.id),
+            "strategy": {
+                "id": str(new_strategy.id),
+                "niche": new_strategy.niche,
+                "avatar": new_strategy.avatar,
+                "keywords": new_strategy.keywords,
+                "hashtags": new_strategy.hashtags,
+                "saved_posts": new_strategy.saved_posts or []
+            }
+        }
     except Exception as e:
         db.rollback()
-        print(f"Error detallado al guardar estrategia: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al guardar estrategia: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creando estrategia: {str(e)}")
 
 @app.post("/api/generate-profile-magnet")
 def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = Depends(get_current_user)):
@@ -798,37 +815,6 @@ def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = 
         return data
     except Exception:
         return {"bio": str(res), "cta": "Envía un mensaje privado para más detalles."}
-
-@app.post("/api/strategies")
-def create_strategy(
-    strategy_data: StrategyCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    try:
-        new_strategy = Strategy(
-            niche=strategy_data.niche,
-            avatar=strategy_data.avatar,
-            keywords=strategy_data.keywords,
-            hashtags=strategy_data.hashtags,
-            owner_id=current_user.id
-        )
-        db.add(new_strategy)
-        db.commit()
-        db.refresh(new_strategy)
-        return {"status": "success", "strategy_id": new_strategy.id}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al guardar estrategia: {str(e)}")
-
-class AddPostToStrategy(BaseModel):
-    url: str
-    caption: str = ''
-    likesCount: int = 0
-    commentsCount: int = 0
-    ownerUsername: str = ''
-
-from sqlalchemy.orm.attributes import flag_modified
 
 @app.post("/api/strategies/{strategy_id}/posts")
 def add_post_to_strategy(
@@ -944,7 +930,13 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS comment_id VARCHAR(100);",
         "ALTER TABLE outbox_items ADD COLUMN IF NOT EXISTS comment_url TEXT;",
         "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
-        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS saved_posts JSONB;"
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS saved_posts JSONB;",
+
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS post_url TEXT;",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS result_data JSONB;",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+
     ]
     
     from sqlalchemy import text
