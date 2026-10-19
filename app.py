@@ -1024,6 +1024,13 @@ def test_welcome_email(secret: str, to: str = "servicioalcliente@mentesalmercado
 # --- RESTABLECIMIENTO DE CONTRASEÑA ---
 from pydantic import BaseModel
 
+
+from datetime import datetime, timedelta
+import jwt
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "SetterMindSecretKey2026_ProductionSecure")
+JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 
