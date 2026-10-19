@@ -951,6 +951,14 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
         "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
         "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS saved_posts JSONB;",
 
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'basic';",
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+        "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'basic';",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+
+
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS post_url TEXT;",
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS result_data JSONB;",
