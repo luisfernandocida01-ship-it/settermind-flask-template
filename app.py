@@ -838,44 +838,62 @@ def api_generate_profile_magnet(req: ProfileMagnetRequest, current_user: User = 
 @app.post("/api/strategies/{strategy_id}/posts")
 def add_post_to_strategy(
     strategy_id: str,
-    post_item: AddPostToStrategy,
+    payload: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     from sqlalchemy.orm.attributes import flag_modified
-    item_dict = post_item.model_dump() if hasattr(post_item, "model_dump") else post_item.dict()
     try:
-        strat = db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.owner_id == current_user.id).first()
+        strategy = db.query(Strategy).filter(
+            Strategy.id == strategy_id,
+            Strategy.owner_id == str(current_user.id)
+        ).first()
 
-        if not strat:
-            strat = Strategy(
-                id=strategy_id,
-                niche="Estrategia Radar",
-                avatar="Público Objetivo",
-                keywords=[],
-                hashtags=[],
-                saved_posts=[item_dict],
-                owner_id=current_user.id
-            )
-            db.add(strat)
-        else:
-            current_posts = list(strat.saved_posts or [])
-            if not any(isinstance(p, dict) and p.get("url") == post_item.url for p in current_posts):
-                current_posts.append(item_dict)
-                strat.saved_posts = current_posts
-                flag_modified(strat, "saved_posts")
+        if not strategy:
+            raise HTTPException(status_code=404, detail="Estrategia no encontrada")
+
+        if strategy.saved_posts is None:
+            strategy.saved_posts = []
+
+        # Normalizar campos de autor, likes y comentarios
+        author = (
+            payload.get("author") or 
+            payload.get("ownerUsername") or 
+            payload.get("username") or 
+            payload.get("owner_username") or 
+            "autor"
+        ).replace("@", "")
+
+        likes = payload.get("likes_count") or payload.get("likesCount") or payload.get("likes") or 0
+        comments = payload.get("comments_count") or payload.get("commentsCount") or payload.get("comments") or 0
+        caption = payload.get("caption") or payload.get("text") or payload.get("caption_text") or ""
+        post_url = payload.get("post_url") or payload.get("url") or payload.get("link") or ""
+
+        post_record = {
+            "post_url": post_url,
+            "caption": caption,
+            "author": f"@{author}" if not author.startswith("@") else author,
+            "comments_count": int(comments) if str(comments).isdigit() else 0,
+            "likes_count": int(likes) if str(likes).isdigit() else 0,
+            "relevance_score": int(payload.get("relevance_score") or payload.get("relevanceScore") or 8),
+            "notes": payload.get("notes") or ""
+        }
+
+        current_posts = list(strategy.saved_posts)
+        current_posts.append(post_record)
+        strategy.saved_posts = current_posts
+        flag_modified(strategy, "saved_posts")
 
         db.commit()
-        db.refresh(strat)
-        return {"status": "success", "saved_posts": strat.saved_posts or [item_dict]}
+        db.refresh(strategy)
+        return {"status": "success", "saved_posts": strategy.saved_posts}
+
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        print(f"Excepcion capturada en add_post_to_strategy: {e}")
-        return {"status": "success", "saved_posts": [item_dict]}
+        raise HTTPException(status_code=500, detail=f"Error guardando post en estrategia: {str(e)}")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))
 
 @app.get("/api/admin-migrate-db")
 def run_db_migration(secret: str = ""):
