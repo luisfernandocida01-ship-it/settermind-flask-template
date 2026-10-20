@@ -92,15 +92,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://settermind.mentesalmercado.online",
-        "https://settermind-frontend.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 engine = create_engine(
