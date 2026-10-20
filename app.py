@@ -6,7 +6,7 @@ import secrets
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
+from sqlalchemy import func, create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -127,7 +127,7 @@ except Exception as e:
 
 # Migracion forzosa de la columna saved_posts para SQLite
 try:
-    from sqlalchemy import text
+    from sqlalchemy import func, text
     with engine.connect() as _conn:
         _conn.execute(text("ALTER TABLE strategies ADD COLUMN saved_posts JSON DEFAULT '[]'"))
         _conn.commit()
@@ -163,7 +163,7 @@ def get_db():
         yield db
     finally:
         db.close()
-from sqlalchemy import text
+from sqlalchemy import func, text
 
 # Migración automática si la tabla ya existía sin la columna saved_posts
 try:
@@ -924,7 +924,7 @@ def run_db_migration(secret: str = ""):
     if secret != "SetterMind2026Migrate":
         raise HTTPException(status_code=403, detail="No autorizado")
     
-    from sqlalchemy import text
+    from sqlalchemy import func, text
     results = []
     with engine.connect() as conn:
         commands = [
@@ -1027,7 +1027,7 @@ except Exception as e:
 
     ]
     
-    from sqlalchemy import text
+    from sqlalchemy import func, text
     for col in columns:
         try:
             db.execute(text(col))
