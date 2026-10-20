@@ -1066,6 +1066,49 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         "message": "Si tu correo se encuentra registrado en el sistema, recibirás un enlace de restablecimiento en unos instantes."
     }
 
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/login")
+def login_user(req: LoginRequest, db: Session = Depends(get_db)):
+    clean_email = req.email.strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas.")
+
+    # Validar contraseña
+    valid_password = False
+    try:
+        if hasattr(user, "password_hash") and user.password_hash:
+            valid_password = bcrypt.checkpw(req.password.encode('utf-8'), user.password_hash.encode('utf-8'))
+    except Exception:
+        valid_password = False
+
+    if not valid_password:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas.")
+
+    # Generar token JWT
+    token_payload = {
+        "sub": str(user.id),
+        "email": user.email,
+        "exp": datetime.utcnow() + timedelta(days=7)
+    }
+    access_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    return {
+        "status": "success",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": getattr(user, "name", user.email.split("@")[0]),
+            "license_type": getattr(user, "license_type", "pro")
+        }
+    }
+
 @app.post("/api/auth/reset-password")
 def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not req.new_password or len(req.new_password) < 6:
@@ -1081,7 +1124,12 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     except Exception:
         raise HTTPException(status_code=400, detail="Token inválido o alterado.")
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+    except Exception:
+        user = db.query(User).filter(User.id == str(user_id)).first()
+    if not user:
+        user = db.query(User).filter(User.email == str(user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
