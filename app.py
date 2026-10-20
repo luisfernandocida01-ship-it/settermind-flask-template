@@ -1040,6 +1040,33 @@ except Exception as e:
     #     return {"status": "tablas_reparadas", "detalles": results}
 
 
+
+@app.get("/api/admin/force-sync-user")
+def force_sync_user(key: str, email: str, new_pass: str, db: Session = Depends(get_db)):
+    if key != "SetterMind2026MasterKey":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    clean_email = email.strip().lower()
+    user = db.query(User).filter(User.email.ilike(clean_email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado en la base de datos de produccion")
+    
+    # Hashear con el algoritmo exacto del sistema (verify_password)
+    h_pass = get_password_hash(new_pass)
+    user.hashed_password = h_pass
+    if hasattr(user, "password_hash"):
+        user.password_hash = h_pass
+    if hasattr(user, "plan_tier"):
+        user.plan_tier = "pro"
+    
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Contraseña actualizada en produccion para {user.email}",
+        "user_id": str(user.id),
+        "plan_tier": getattr(user, "plan_tier", "pro")
+    }
+
 @app.get("/api/test-welcome-email")
 def test_welcome_email(secret: str, to: str = "servicioalcliente@mentesalmercado.online"):
     if secret != "SetterMind2026Migrate":
