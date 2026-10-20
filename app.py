@@ -106,6 +106,25 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
+# Auto-migración de columnas en la tabla users
+try:
+    with engine.connect() as conn:
+        for col, col_type in [
+            ("plan_tier", "VARCHAR DEFAULT 'pro'"),
+            ("monthly_generations_count", "INTEGER DEFAULT 0"),
+            ("last_usage_reset", "DATETIME"),
+            ("saved_posts", "TEXT DEFAULT '[]'")
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"MIGRACION EXITOSA: Columna {col} agregada a users.")
+            except Exception:
+                pass
+except Exception as e:
+    print(f"Nota de migración: {e}")
+
+
 # Migracion forzosa de la columna saved_posts para SQLite
 try:
     from sqlalchemy import text
@@ -944,6 +963,25 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
     
     # 1. Asegurar create_all de todas las tablas declaradas
     Base.metadata.create_all(bind=engine)
+
+# Auto-migración de columnas en la tabla users
+try:
+    with engine.connect() as conn:
+        for col, col_type in [
+            ("plan_tier", "VARCHAR DEFAULT 'pro'"),
+            ("monthly_generations_count", "INTEGER DEFAULT 0"),
+            ("last_usage_reset", "DATETIME"),
+            ("saved_posts", "TEXT DEFAULT '[]'")
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"MIGRACION EXITOSA: Columna {col} agregada a users.")
+            except Exception:
+                pass
+except Exception as e:
+    print(f"Nota de migración: {e}")
+
     
     results = ["Base.metadata.create_all ejecutado."]
     
@@ -999,7 +1037,7 @@ def fix_all_tables_admin(secret: str = "", db: Session = Depends(get_db)):
             db.rollback()
             results.append(f"Nota: {col} -> {str(e)}")
             
-    return {"status": "tablas_reparadas", "detalles": results}
+    #     return {"status": "tablas_reparadas", "detalles": results}
 
 
 @app.get("/api/test-welcome-email")
@@ -1072,43 +1110,47 @@ class LoginRequest(BaseModel):
     password: str
 
 @app.post("/api/auth/login")
-def login_user(req: LoginRequest, db: Session = Depends(get_db)):
+def auth_login(req: LoginRequest, db: Session = Depends(get_db)):
     clean_email = req.email.strip().lower()
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas.")
+        raise HTTPException(status_code=401, detail="Credenciales inválidas.")
 
-    # Validar contraseña
-    valid_password = False
-    try:
-        if hasattr(user, "password_hash") and user.password_hash:
-            valid_password = bcrypt.checkpw(req.password.encode('utf-8'), user.password_hash.encode('utf-8'))
-    except Exception:
-        valid_password = False
+    # Validar con verify_password o bcrypt nativo
+    stored_hash = getattr(user, "hashed_password", None) or getattr(user, "password_hash", None)
+    is_valid = False
+    if stored_hash:
+        try:
+            is_valid = verify_password(req.password, stored_hash)
+        except Exception:
+            try:
+                is_valid = bcrypt.checkpw(req.password.encode('utf-8'), stored_hash.encode('utf-8'))
+            except Exception:
+                is_valid = (req.password == stored_hash)
 
-    if not valid_password:
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas.")
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas.")
 
-    # Generar token JWT
-    token_payload = {
+    tier = getattr(user, "plan_tier", "pro") or "pro"
+    token = create_access_token(data={
         "sub": str(user.id),
         "email": user.email,
-        "exp": datetime.utcnow() + timedelta(days=7)
-    }
-    access_token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        "plan_tier": tier
+    })
 
     return {
         "status": "success",
-        "access_token": access_token,
+        "token": token,
+        "access_token": token,
         "token_type": "bearer",
         "user": {
-            "id": user.id,
+            "id": str(user.id),
             "email": user.email,
-            "name": getattr(user, "name", user.email.split("@")[0]),
-            "license_type": getattr(user, "license_type", "pro")
+            "username": getattr(user, "username", user.email.split("@")[0]),
+            "plan_tier": tier,
+            "license_type": tier
         }
     }
-
 @app.post("/api/auth/reset-password")
 def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not req.new_password or len(req.new_password) < 6:
@@ -1133,9 +1175,17 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
-    # Hashear nueva contraseña y guardar
-    salt = bcrypt.gensalt()
-    user.password_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), salt).decode('utf-8')
+    # Hashear nueva contraseña y guardar en hashed_password
+    try:
+        new_hash = get_password_hash(req.new_password)
+    except Exception:
+        salt = bcrypt.gensalt()
+        new_hash = bcrypt.hashpw(req.new_password.encode('utf-8'), salt).decode('utf-8')
+
+    if hasattr(user, "hashed_password"):
+        user.hashed_password = new_hash
+    if hasattr(user, "password_hash"):
+        user.password_hash = new_hash
     db.commit()
 
     return {"status": "success", "message": "Tu contraseña ha sido actualizada exitosamente."}
