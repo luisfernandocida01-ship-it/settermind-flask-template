@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 # app.py
 import os
 import json
@@ -301,79 +302,65 @@ async def get_current_user(
 # --- WEBHOOK DE HOTMART (AUTOMATIZACIÓN POST-COMPRA) ---
 @app.post("/hotmartWebhook")
 async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
-    payload = await request.json()
-    
-    # 1. Validar el secreto de Hotmart (Hottok)
-    token_received = request.headers.get("hottok") or payload.get("hottok")
-    if token_received != HOTTOK_SECRET:
-        raise HTTPException(status_code=401, detail="Acceso no autorizado: Hottok inválido")
+    import traceback
+    try:
+        payload = await request.json()
+        token_received = request.headers.get("hottok") or payload.get("hottok")
+        if token_received != HOTTOK_SECRET:
+            raise HTTPException(status_code=401, detail="Acceso no autorizado: Hottok inválido")
 
-    event = payload.get("event")
-    data = payload.get("data", {})
-    buyer = data.get("buyer", {})
-    buyer_email = buyer.get("email")
+        event = payload.get("event")
+        data = payload.get("data", {})
+        buyer = data.get("buyer", {})
+        buyer_email = buyer.get("email")
 
-    if not buyer_email:
-        return {"status": "ignored", "reason": "No buyer email provided"}
+        if not buyer_email:
+            return {"status": "ignored", "reason": "No buyer email provided"}
 
-    # 2. EVENTO: COMPRA APROBADA
-    if event in ["PURCHASE_APPROVED", "ORDER_APPROVED"]:
-        buyer_name = buyer.get("name", buyer_email.split("@")[0])
-        
-        # Buscar si el usuario ya existe o crearlo
-        user = db.query(User).filter(User.email == buyer_email).first()
-        if not user:
-            user = User(
-                username=buyer_name,
-                email=buyer_email,
-                hashed_password=get_password_hash(secrets.token_hex(12))
+        if event in ["PURCHASE_APPROVED", "ORDER_APPROVED"]:
+            buyer_name = buyer.get("name", buyer_email.split("@")[0])
+            user = db.query(User).filter(User.email == buyer_email).first()
+            if not user:
+                user = User(
+                    username=buyer_name,
+                    email=buyer_email,
+                    hashed_password=get_password_hash(secrets.token_hex(12)),
+                    plan_tier="pro"
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+
+            raw_key = f"sk_live_{secrets.token_hex(24)}"
+            hashed_key = hash_api_key(raw_key)
+
+            from models import ApiKey
+            new_license = ApiKey(
+                key_hash=hashed_key,
+                user_email=buyer_email,
+                is_active=True,
+                monthly_limit=1000,
+                owner_id=user.id
             )
-            db.add(user)
+            db.add(new_license)
             db.commit()
-            db.refresh(user)
 
-        # Generar la API Key en texto plano para el usuario
-        raw_key = f"sk_live_{secrets.token_hex(24)}"
-        # Hashear la clave en SHA-256 para guardarla segura en la BD
-        hashed_key = hash_api_key(raw_key)
+            from mailer import send_welcome_email
+            send_welcome_email(
+                to_email=buyer_email,
+                buyer_name=buyer_name,
+                raw_api_key=raw_key
+            )
 
-        # ==============================================================
-        # AQUÍ ES DONDE SE CREA new_license EN LA BASE DE DATOS:
-        # ==============================================================
-        new_license = ApiKey(
-            key_hash=hashed_key,
-            user_email=buyer_email,
-            is_active=True,
-            monthly_limit=1000,
-            owner_id=user.id
-        )
-        db.add(new_license)
-        db.commit()   # <-- Guardado confirmado en base de datos
-        print(f"[HOTMART] Licencia creada en BD para {buyer_email}. Key: {raw_key}")
+            return {"status": "provisioned", "user_email": buyer_email, "license_key": raw_key}
 
-        # ==============================================================
-        # JUSTO AQUÍ DESPUÉS SE DISPARA EL CORREO CON RESEND:
-        # ==============================================================
-        send_welcome_email(
-            to_email=buyer_email,
-            buyer_name=buyer_name,
-            raw_api_key=raw_key
-        )
+        return {"status": "ignored", "event": event}
 
-        return {"status": "provisioned", "user_email": buyer_email}
+    except Exception as e:
+        err_detail = traceback.format_exc()
+        print(f"[HOTMART_ERROR] {err_detail}")
+        return JSONResponse(status_code=500, content={"error": str(e), "traceback": err_detail})
 
-    # 3. EVENTO: REEMBOLSO O CANCELACIÓN
-    elif event in ["PURCHASE_REFUNDED", "REFUNDED", "SUBSCRIPTION_CANCELED"]:
-        licenses = db.query(ApiKey).filter(ApiKey.user_email == buyer_email).all()
-        for lic in licenses:
-            lic.is_active = False
-        db.commit()
-        print(f"[HOTMART] Licencias revocadas para {buyer_email}")
-        return {"status": "revoked", "user_email": buyer_email}
-
-    return {"status": "received", "event": event}
-
-# --- RESTO DE ENDPOINTS ---
 @app.get("/")
 def read_root():
     return {"message": "SetterMind AI API Online", "framework": "FastAPI", "version": "2.0"}
