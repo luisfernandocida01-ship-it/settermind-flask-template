@@ -980,7 +980,11 @@ def reparar_tablas_endpoint(db: Session = Depends(get_db)):
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);",
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS post_url TEXT;",
         "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS result_data JSONB;",
-        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"
+        "ALTER TABLE analyses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(50) DEFAULT 'basic';",
+        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS monthly_generations_count INTEGER DEFAULT 0;",
+        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS last_usage_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS owner_id VARCHAR(100);"
     ]
     from sqlalchemy import text
     for col in columns:
