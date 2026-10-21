@@ -305,14 +305,15 @@ async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
     import traceback
     try:
         payload = await request.json()
-        token_received = request.headers.get("hottok") or payload.get("hottok")
+        token_received = request.headers.get("x-hotmart-hottok") or request.headers.get("hottok") or payload.get("hottok")
         if token_received != HOTTOK_SECRET:
             raise HTTPException(status_code=401, detail="Acceso no autorizado: Hottok inválido")
 
         event = payload.get("event")
         data = payload.get("data", {})
-        buyer = data.get("buyer", {})
-        buyer_email = buyer.get("email")
+        buyer = data.get("buyer", {}) if isinstance(data, dict) else {}
+        buyer_email = buyer.get("email") or data.get("buyer_email") or payload.get("buyer_email")
+        buyer_name = buyer.get("name") or data.get("buyer_name") or (buyer_email.split("@")[0] if buyer_email else "Setter")
 
         if not buyer_email:
             return {"status": "ignored", "reason": "No buyer email provided"}
