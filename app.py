@@ -346,12 +346,20 @@ async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
             db.add(new_license)
             db.commit()
 
-            from mailer import send_welcome_email
-            send_welcome_email(
-                to_email=buyer_email,
-                buyer_name=buyer_name,
-                raw_api_key=raw_key
-            )
+            # Enviar correo protegiendo contra direcciones simuladas de test de Hotmart (@example.com)
+            try:
+                if not buyer_email.endswith("@example.com"):
+                    from mailer import send_welcome_email
+                    send_welcome_email(
+                        to_email=buyer_email,
+                        buyer_name=buyer_name,
+                        raw_api_key=raw_key
+                    )
+                    print(f"[HOTMART] Correo de bienvenida despachado a {buyer_email}")
+                else:
+                    print(f"[HOTMART] Correo omitido por ser direccion de prueba de sandbox: {buyer_email}")
+            except Exception as mail_err:
+                print(f"[HOTMART_MAIL_ERROR] No se pudo entregar email a {buyer_email}: {mail_err}")
 
             return {"status": "provisioned", "user_email": buyer_email, "license_key": raw_key}
 
