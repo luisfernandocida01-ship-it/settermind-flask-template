@@ -176,7 +176,8 @@ except Exception:
     # print migración
 
 # --- MODELOS PYDANTIC ---
-class UserCreate(BaseModel): username: str; email: str; password: str
+class UserCreate(BaseModel):
+    license_key: Optional[str] = None username: str; email: str; password: str
 class UserLogin(BaseModel): email: str; password: str
 class ProspectRequest(BaseModel): hashtag: str
 class AnalyzeRequest(BaseModel):
@@ -375,13 +376,38 @@ def read_root():
 
 @app.post("/api/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == user.email).first():
+    clean_email = user.email.strip().lower()
+    if db.query(User).filter(func.lower(User.email) == clean_email).first():
         raise HTTPException(status_code=409, detail="El email ya está registrado.")
+    
+    # Validar licencia si fue enviada
+    if getattr(user, "license_key", None):
+        raw_key = user.license_key.strip()
+        h_key = hash_api_key(raw_key)
+        license_record = db.query(ApiKey).filter(ApiKey.key_hash == h_key, ApiKey.is_active == True).first()
+        if not license_record:
+            # Buscar también si se guardó la clave en texto plano
+            license_record = db.query(ApiKey).filter(ApiKey.key_hash == raw_key, ApiKey.is_active == True).first()
+        if not license_record:
+            raise HTTPException(status_code=400, detail="Clave de licencia inválida o inactiva.")
+
     hashed_password = get_password_hash(user.password)
-    new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+    new_user = User(
+        username=user.username,
+        email=clean_email,
+        hashed_password=hashed_password,
+        plan_tier="pro"
+    )
     db.add(new_user)
     db.commit()
-    return {"message": "Usuario registrado exitosamente."}
+    db.refresh(new_user)
+
+    # Vincular la licencia al nuevo usuario
+    if getattr(user, "license_key", None) and 'license_record' in locals() and license_record:
+        license_record.owner_id = new_user.id
+        db.commit()
+
+    return {"status": "success", "message": "Usuario registrado exitosamente."}
 
 @app.post("/api/login")
 def login_user(user: UserLogin, db: Session = Depends(get_db)):
