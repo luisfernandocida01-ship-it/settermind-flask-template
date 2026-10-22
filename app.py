@@ -299,6 +299,13 @@ async def get_current_user(
         detail="Credenciales no proporcionadas (se requiere x-api-key o Bearer token)"
     )
 
+# Mapeo de códigos de oferta de Hotmart a tiers de SetterMindAI
+TIER_OFFER_MAP = {
+    "niqxez8p": "basico",  # Plan Básico ($27)
+    "uzwcncsm": "pro",  # Plan Pro ($47)
+    "56p4tl2x": "plus",  # Plan Plus ($97)
+}
+
 # --- WEBHOOK DE HOTMART (AUTOMATIZACIÓN POST-COMPRA) ---
 @app.post("/hotmartWebhook")
 async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
@@ -318,6 +325,11 @@ async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
         if not buyer_email:
             return {"status": "ignored", "reason": "No buyer email provided"}
 
+        purchase = data.get("purchase", {}) if isinstance(data, dict) else {}
+        offer_code = purchase.get("offer", {}).get("code")
+        tracking_sck = purchase.get("sck")
+        assigned_tier = TIER_OFFER_MAP.get(offer_code) or tracking_sck or "basico"
+
         if event in ["PURCHASE_APPROVED", "ORDER_APPROVED"]:
             buyer_name = buyer.get("name", buyer_email.split("@")[0])
             user = db.query(User).filter(User.email == buyer_email).first()
@@ -326,11 +338,14 @@ async def hotmart_webhook(request: Request, db: Session = Depends(get_db)):
                     username=buyer_name,
                     email=buyer_email,
                     hashed_password=get_password_hash(secrets.token_hex(12)),
-                    plan_tier="pro"
+                    plan_tier=assigned_tier,
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+            else:
+                user.plan_tier = assigned_tier
+                db.commit()
 
             raw_key = f"sk_live_{secrets.token_hex(24)}"
             hashed_key = hash_api_key(raw_key)
